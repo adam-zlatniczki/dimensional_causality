@@ -491,7 +491,7 @@ int test_infer_causality(){
 	unsigned int* k_range = new unsigned int[3]{4, 6, 8};
 	
 	cout << "Starting inference" << endl;
-	double* probs = infer_causality(x, y, 100, 3, 1, k_range, 2, 0.05);
+	double* probs = infer_causality(x, y, 100, 3, 1, k_range, 3, 0.05);
 	cout << "Finished inference" << endl;
 	
 	cout << "P(X->Y) = " << probs[0] << endl;

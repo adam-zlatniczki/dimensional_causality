@@ -19,7 +19,7 @@ void cov(double** matr, unsigned int n, double* cov_m, unsigned int i, unsigned 
 	double sum_2 = 0.0;
 	double sqr_sum = 0.0;
 
-	#pragma parallel for simd reduction(sum_1, sum_2, sqr_sum)
+	#pragma parallel for simd reduction(+:sum_1, sum_2, sqr_sum)
 	for (int k=0; k<n; k++) {
 		sum_1 += matr[i][k];
 		sum_2 += matr[j][k];

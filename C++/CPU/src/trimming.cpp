@@ -14,7 +14,7 @@ bool* single_trim_mask(double* local_dims, const int n, const double eps=0.05){
 
 	__gnu_parallel::sort(sorted_local_dims, sorted_local_dims+n);
 	
-	int num_remove = eps * n / 2;
+	int num_remove = eps * n;
 	
 	double lb = sorted_local_dims[num_remove];
 	double ub = sorted_local_dims[n-1-num_remove];

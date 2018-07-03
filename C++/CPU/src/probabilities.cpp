@@ -73,7 +73,18 @@ double Gauss::pdf(double* point){
 	
 	likelihood = exp(-0.5 * likelihood);
 	
+	delete[] diff;
+	
 	return norm_term * likelihood;
+}
+
+
+void check_feasibility(double min_x, double min_y, double min_j, double max_j, double max_z){
+	if (min_x > max_j) throw std::invalid_argument( "D_X > D_J, which should be impossible! Verify that your data is not stochastic." );
+	if (min_y > max_j) throw std::invalid_argument( "D_Y > D_J, which should be impossible! Verify that your data is not stochastic." );
+	if (min_x > max_z) throw std::invalid_argument( "D_X > D_Z, which should be impossible! Verify that your data is not stochastic." );
+	if (min_y > max_z) throw std::invalid_argument( "D_Y > D_J, which should be impossible! Verify that your data is not stochastic." );
+	if (min_j > max_z) throw std::invalid_argument( "D_J > D_Z, which should be impossible! Verify that your data is not stochastic." );
 }
 
 
@@ -81,110 +92,100 @@ double prob_A11( double* expv, double* cov_m,
 				double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z,
 				double dx, double dy, double dj, double dz){
 	// calculate P(X < Y = J < Z)
-	double likelihood = 0.0;
 	
-	if (max_x < min_y){  // P(X < Y = J < Z) = P(Y = J < Z)
-        if (max_y < min_j){  // P(Y = J < Z) = 0
-			cout << "1" << endl;
-            likelihood = 0.0;
-        } else {  // calculate P(Y = J < Z)	
-            if (max_j < min_z) {  // P(Y = J < Z) = P(Y = J)
-				cout << "2" << endl;
-				Gauss gauss;
-				double projected_expv[2] = {expv[1], expv[2]};
-				double projected_cov_m[4] = {cov_m[5], cov_m[6], cov_m[9], cov_m[10]};
-				gauss.set(projected_expv, projected_cov_m, 2);
+	// check for certificate of case impossibility
+	if ( (max_y < min_x) || (max_y < min_j) )
+		return 0.0;
+	
+	double likelihood = 0.0;
+	Gauss gauss;
+	
+	if (max_y < min_z) {
+		// P(X<Y=J<Z) = P(X<Y=J)
+		if (max_x < min_y) {
+			// P(X<Y=J) = P(Y=J)
+			double projected_expv[2] = {expv[1], expv[2]};
+			double projected_cov_m[4] = {cov_m[5], cov_m[6], cov_m[9], cov_m[10]};
+			gauss.set(projected_expv, projected_cov_m, 2);
+			
+			unsigned int y_steps = (max_y - min_y) / dy;
+			double y;
 				
-				unsigned int y_steps = (max_y - min_y) / dy;
+			for (int i=0; i<=y_steps; i++) {
+				y = min_y + i*dy;
+				double point[2] = {y, y};
+				likelihood += gauss.pdf(point) * dy;
+			}
+		} else {
+			// P(X<Y=J)
+			double projected_expv[3] = {expv[0], expv[1], expv[2]};
+			double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
+			                             cov_m[4], cov_m[5], cov_m[6],
+										 cov_m[8], cov_m[9], cov_m[10]};
+			gauss.set(projected_expv, projected_cov_m, 3);
+			
+			unsigned int x_steps = (max_x - min_x) / dx;
+			unsigned int y_steps;
+			double x, y, y_lb;
+			
+			for (int i=0; i<=x_steps; i++) {
+				x = min_x + i*dx;
+				y_lb = min( max(x, min_y), max_y );
+				y_steps = (max_y - y_lb) / dy;
 				
-				double y;
-				//#pragma omp parallel for private(y) reduction(+:likelihood)
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i * dy;
-					double point[2] = {y, y};
-					likelihood += gauss.pdf(point) * dy;
-				}
-            } else { // calculate P(Y = J < Z)
-				cout << "3" << endl;
-				Gauss gauss;
-				double projected_expv[3] = {expv[1], expv[2], expv[3]};
-				double projected_cov_m[9] = {cov_m[5], cov_m[6], cov_m[7],
-				                            cov_m[9], cov_m[10], cov_m[11],
-											cov_m[13], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				
-				double y, z;
-				//#pragma omp parallel for private(y) reduction(+:likelihood)
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int z_steps = (max_z - y) / dz;
-					
-					//#pragma omp parallel for private(z) reduction(+:likelihood)
-					for (int j=0; j<z_steps; j++) {
-						z = y + j*dz;
-						double point[3] = {y, y, z};
-						likelihood += gauss.pdf(point) * dz * dy;
-					}
+				for (int k=1; k<=y_steps; k++) {
+					y = y_lb + k*dy;
+					double point[3] = {x, y, y};
+					likelihood += gauss.pdf(point) * dy * dx;
 				}
 			}
 		}
-	} else {  // calculate P(X < Y = J < Z)
-        if (max_y < min_j) { // P(X < Y = J < Z) = 0
-			cout << "4" << endl;
-            likelihood = 0.0;
-        } else { // calculate P(X < Y = J < Z)
-            if (max_j < min_z) { // P(X < Y = J < Z) = P(X < Y = J)
-				cout << "5" << endl;
-				Gauss gauss;
-				double projected_expv[3] = {expv[0], expv[1], expv[2]};
-				double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
-				                            cov_m[4], cov_m[5], cov_m[6],
-											cov_m[8], cov_m[9], cov_m[10]};
-				gauss.set(projected_expv, projected_cov_m, 3);
+	} else {
+		if (max_x < min_y) {
+			// P(Y=J<Z)
+			double projected_expv[3] = {expv[1], expv[2], expv[3]};
+			double projected_cov_m[9] = {cov_m[5], cov_m[6], cov_m[7],
+			                             cov_m[9], cov_m[10], cov_m[11],
+										 cov_m[13], cov_m[14], cov_m[15]};
+			gauss.set(projected_expv, projected_cov_m, 3);
+			
+			unsigned int y_steps = (max_y - min_y) / dy;
+			unsigned int z_steps;
+			double y, z, z_lb;
+			
+			for (int i=0; i<=y_steps; i++) {
+				y = min_y + i*dy;
+				z_lb = min( max(y, min_z), max_z );
+				z_steps = (max_z - z_lb) / dz;
 				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x,y;
-				
-				//#pragma omp parallel for private(x) reduction(+: likelihood)
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int y_steps = (max_y - x) / dy;
-					
-					//#pragma omp parallel for private(y) reduction(+: likelihood)
-					for (int j=0; j<y_steps; j++) {
-						y = x + j*dy;
-						double point[3] = {x, y, y};
-						likelihood += gauss.pdf(point) * dy * dx;
-					}
+				for (int k=1; k<=z_steps; k++){
+					z = z_lb + k*dz;
+					double point[3] = {y, y, z};
+					likelihood += gauss.pdf(point) * dz * dy;
 				}
-            } else { // calculate P(X < Y = J < Z)
-				cout << "6" << endl;
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
+			}
+		} else {
+			// P(X<Y=J<Z)
+			gauss.set(expv, cov_m, 4);
+			
+			unsigned int x_steps = (max_x - min_x) / dx;
+			unsigned int y_steps, z_steps;
+			double x, y, z, y_lb, z_lb;
+			
+			for (int i=0; i<=x_steps; i++) {
+				x = min_x + i*dx;
+				y_lb = min( max(x, min_y), max_y );
+				y_steps = (max_y - y_lb) / dy;
 				
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x,y,z;
-				
-				//#pragma omp parallel for private(x) reduction(+:likelihood)
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int y_steps = (max_y - x) / dy;
-
-					//#pragma omp parallel for private(y) reduction(+:likelihood)
-					for (int j=0; j<y_steps; j++) {
-						y = x + j*dy;
-						unsigned int z_steps = (max_z - y) / dz;
-						
-						//#pragma omp parallel for private(z) reduction(+:likelihood)
-						for (int k=0; k<z_steps; k++) {
-							z = y + k*dz;
-							double point[4] = {x, y, y, z};
-							
-							likelihood += gauss.pdf(point) * dz * dy * dx;
-						}
+				for (int k=1; k<=y_steps; k++) {
+					y = y_lb + k*dy;
+					z_lb = min( max(y, min_z), max_z );
+					z_steps = (max_z - z_lb) / dz;
+					
+					for (int l=1; l<=z_steps; l++) {
+						z = z_lb + l*dz;
+						double point[4] = {x, y, y, z};
+						likelihood += gauss.pdf(point) * dz * dy * dx;
 					}
 				}
 			}
@@ -193,6 +194,9 @@ double prob_A11( double* expv, double* cov_m,
 	
 	return likelihood;
 }
+
+
+
 
 
 double prob_A12(double* expv, double* cov_m, double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z, double dx, double dy, double dj, double dz){
@@ -1112,24 +1116,26 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size)
 	double max_x = expv[0] + c * sqrt(cov_m[0]);
     double dx = (max_x - min_x) / bins;
 
-    double min_y = expv[1] - c * sqrt(cov_m[4]);
-	double max_y = expv[1] + c * sqrt(cov_m[4]);
+    double min_y = expv[1] - c * sqrt(cov_m[5]);
+	double max_y = expv[1] + c * sqrt(cov_m[5]);
     double dy = (max_y - min_y) / bins;
 	
-	double min_j = expv[2] - c * sqrt(cov_m[8]);
-	double max_j = expv[2] + c * sqrt(cov_m[8]);
+	double min_j = expv[2] - c * sqrt(cov_m[10]);
+	double max_j = expv[2] + c * sqrt(cov_m[10]);
     double dj = (max_j - min_j) / bins;
 	
-	double min_z = expv[3] - c * sqrt(cov_m[12]);
-	double max_z = expv[3] + c * sqrt(cov_m[12]);
+	double min_z = expv[3] - c * sqrt(cov_m[15]);
+	double max_z = expv[3] + c * sqrt(cov_m[15]);
     double dz = (max_z - min_z) / bins;
 	
-	double* likelihoods = new double[9];
+	check_feasibility(min_x, min_y, min_j, max_j, max_z);
+	
+	double* likelihoods = new double[9]{0, 0, 0, 0, 0, 0, 0, 0, 0};
 	
 	cout << "X: epxv " << expv[0] << ", var " << cov_m[0] << ", dx " << dx << endl;
-	cout << "Y: epxv " << expv[1] << ", var " << cov_m[4] << ", dy " << dy << endl;
-	cout << "J: epxv " << expv[2] << ", var " << cov_m[8] << ", dj " << dj << endl;
-	cout << "Z: epxv " << expv[3] << ", var " << cov_m[12] << ", dz " << dz << endl;
+	cout << "Y: epxv " << expv[1] << ", var " << cov_m[5] << ", dy " << dy << endl;
+	cout << "J: epxv " << expv[2] << ", var " << cov_m[10] << ", dj " << dj << endl;
+	cout << "Z: epxv " << expv[3] << ", var " << cov_m[15] << ", dz " << dz << endl;
 	
 	cout << "calculating Aij likelihood" << endl;
 	
@@ -1138,6 +1144,7 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size)
 		#pragma omp section
 		likelihoods[0] = prob_A11(expv, cov_m, min_x, max_x, min_y, max_y, min_j, max_j, min_z, max_z, dx, dy, dj, dz);
 		
+		/*
 		#pragma omp section
 		likelihoods[1] = prob_A12(expv, cov_m, min_x, max_x, min_y, max_y, min_j, max_j, min_z, max_z, dx, dy, dj, dz);
 		
@@ -1161,6 +1168,7 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size)
 		
 		#pragma omp section
 		likelihoods[8] = prob_A33(expv, cov_m, min_x, max_x, min_y, max_y, min_j, max_j, min_z, max_z, dx, dy, dj, dz);
+		*/
 	}
 	cout << "Finished calculating Aij likelihood" << endl;
 	
