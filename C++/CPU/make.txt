@@ -1,0 +1,1 @@
+g++ -Iinclude -Ilib\STANN\include -o build\main -O3 src\*
