@@ -479,19 +479,19 @@ int test_gauss_pdf(){
 
 
 int test_infer_causality(){
-	double* x = new double[100];
-	double* y = new double[100];
+	double* x = new double[10000];
+	double* y = new double[10000];
 	
-	srand(0);
-	for (int i=0; i<100; i++) {
+	//srand(0);
+	for (int i=0; i<10000; i++) {
 		x[i] = rand();
 		y[i] = rand();
 	}
 	
-	unsigned int* k_range = new unsigned int[3]{4, 6, 8};
+	unsigned int* k_range = new unsigned int[10]{4, 8, 12, 16, 20, 24, 28, 32, 36, 40};
 	
 	cout << "Starting inference" << endl;
-	double* probs = infer_causality(x, y, 100, 3, 1, k_range, 3, 0.05);
+	double* probs = infer_causality(x, y, 10000, 4, 1, k_range, 10, 0.05);
 	cout << "Finished inference" << endl;
 	
 	cout << "P(X->Y) = " << probs[0] << endl;

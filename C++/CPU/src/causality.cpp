@@ -7,11 +7,8 @@
 
 using namespace std;
 
-double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_dim, unsigned int tau, unsigned int* k_range, unsigned int len_range, double eps /*=0.05*/){
-	// TODO: parallel sections
-
+double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_dim, unsigned int tau, unsigned int* k_range, unsigned int len_range, double eps/*=0.05*/, double c/*=3.0*/, double bins/*=20.0*/){
 	// embed manifolds
-	cout << "embedding manifolds" << endl;
 	double* X = embed(x, n, emb_dim, tau);
 	double* Y = embed(y, n, emb_dim, tau);
 	double* J = diophantine_sum(x, y, n, emb_dim, tau);
@@ -21,7 +18,6 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	n -= (emb_dim - 1) * tau;
 	
 	// calculate kNN distances for the whole k-range
-	cout << "calculating kNN distances" << endl;
 	
 	double** X_nn_distances = knn_distances(X, n, emb_dim, k_range[len_range-1]);
 	double** Y_nn_distances = knn_distances(Y, n, emb_dim, k_range[len_range-1]);
@@ -31,7 +27,6 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	double** range_probabilities = new double*[len_range];
 	
 	// explore k-range
-	cout << "exploring k-range" << endl;
 	unsigned int k;
 	unsigned int trimmed_size;
 	
@@ -40,22 +35,17 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 		k = k_range[i];
 		
 		// estimate local dimensions
-		cout << "estimating dimensions" << endl;
 		double* x_dims = local_dims(X_nn_distances, n, k);
 		double* y_dims = local_dims(Y_nn_distances, n, k);
 		double* j_dims = local_dims(J_nn_distances, n, k);
 		double* z_dims = local_dims(Z_nn_distances, n, k);		
 		
 		// trim dimension estimates
-		cout << "trimming data" << endl;
 		double** trimmed_data = trim_data(x_dims, y_dims, j_dims, z_dims, n, trimmed_size, eps);
 		
 		// calculate case probabilities
-		cout << "calculating probs" << endl;
 		double eff_sample_size = trimmed_size / (4 * k);
 		range_probabilities[i] = get_probabilities(trimmed_data, trimmed_size, eff_sample_size);
-		
-		cout << range_probabilities[i][0] << " " << range_probabilities[i][1] << " " << range_probabilities[i][2] << " " << range_probabilities[i][3] << " " << range_probabilities[i][4] << endl;
 		
 		// clear trimmed data
 		for (int j=0; j<4; j++) delete[] trimmed_data[j];
@@ -69,7 +59,6 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	}
 	
 	// aggregate probabilities
-	cout << "aggregating probs" << endl;
 	double* final_probs = new double[5];
 	
 	for (int i=0; i<5; i++) {

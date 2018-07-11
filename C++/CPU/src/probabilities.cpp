@@ -17,11 +17,11 @@ class Gauss {
 		double get_norm_term(){ return norm_term; };
 		~Gauss();
 	private:
-		unsigned int dim;
+		unsigned int dim = 0;
 		double* expv = NULL;
 		double* inv_cov_m = NULL;
-		double det;
-		double norm_term;
+		double det = 0.0;
+		double norm_term = 0.0;
 };
 
 Gauss::~Gauss(){
@@ -31,7 +31,9 @@ Gauss::~Gauss(){
 
 void Gauss::set(double* expv, double* cov_m, unsigned int dim){
 	this->dim = dim;
-	this->expv = expv;
+	
+	this->expv = new double[dim];
+	for (int i=0; i<dim; i++) this->expv[i] = expv[i];
 	
 	switch (dim) {
 		case 4:
@@ -87,107 +89,1420 @@ void check_feasibility(double min_x, double min_y, double min_j, double max_j, d
 	if (min_j > max_z) throw std::invalid_argument( "D_J > D_Z, which should be impossible! Verify that your data is not stochastic." );
 }
 
+double P_Y_eq_J(double* expv, double* cov_m, double max_y, double min_y, double dy){
+	// calculate P(Y = J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[2] = {expv[1], expv[2]};
+	double projected_cov_m[4] = {cov_m[5], cov_m[6], cov_m[9], cov_m[10]};
+	gauss.set(projected_expv, projected_cov_m, 2);
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	double y;
+		
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		double point[2] = {y, y};
+		likelihood += gauss.pdf(point);
+	}
+	likelihood = likelihood * dy;
+	return likelihood;
+}
 
-double prob_A11( double* expv, double* cov_m,
-				double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z,
-				double dx, double dy, double dj, double dz){
+double P_X_less_Y_eq_J(double* expv, double* cov_m, double max_x, double min_x, double dx, double max_y, double min_y, double dy){
+	// calculate P(X < Y = J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[0], expv[1], expv[2]};
+	double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
+								 cov_m[4], cov_m[5], cov_m[6],
+								 cov_m[8], cov_m[9], cov_m[10]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int y_steps;
+	double x, y, y_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		y_lb = min( max(x, min_y), max_y );
+		y_steps = (max_y - y_lb) / dy;
+		
+		int k = 0;
+		if (y_lb == x) k = 1;
+		
+		for (k; k<=y_steps; k++) {
+			y = y_lb + k*dy;
+			double point[3] = {x, y, y};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	likelihood = likelihood * dy * dx;
+	return likelihood;
+}
+
+double P_Y_eq_J_less_Z(double* expv, double* cov_m, double max_y, double min_y, double dy, double max_z, double min_z, double dz){
+	// calculate P(Y = J < Z)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[1], expv[2], expv[3]};
+	double projected_cov_m[9] = {cov_m[5], cov_m[6], cov_m[7],
+								 cov_m[9], cov_m[10], cov_m[11],
+								 cov_m[13], cov_m[14], cov_m[15]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int z_steps;
+	double y, z, z_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		z_lb = min( max(y, min_z), max_z );
+		z_steps = (max_z - z_lb) / dz;
+		
+		int k = 0;
+		if (z_lb == y) k = 1;
+		
+		for (k; k<=z_steps; k++){
+			z = z_lb + k*dz;
+			double point[3] = {y, y, z};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	likelihood = likelihood * dz * dy;
+	return likelihood;
+}
+
+double P_X_less_Y_eq_J_less_Z(double* expv, double* cov_m, double max_x, double min_x, double dx, double max_y, double min_y, double dy, double max_z, double min_z, double dz){
 	// calculate P(X < Y = J < Z)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	gauss.set(expv, cov_m, 4);
+			
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int y_steps, z_steps;
+	double x, y, z, y_lb, z_lb;
+	int k, l;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		y_lb = min( max(x, min_y), max_y );
+		y_steps = (max_y - y_lb) / dy;
+		
+		k = 0;
+		if (y_lb == x) k = 1;
+		
+		for (k; k<=y_steps; k++) {
+			y = y_lb + k*dy;
+			z_lb = min( max(y, min_z), max_z );
+			z_steps = (max_z - z_lb) / dz;
+			
+			l = 0;
+			if (z_lb == y) l = 1;
+			
+			for (l; l<=z_steps; l++) {
+				z = z_lb + l*dz;
+				double point[4] = {x, y, y, z};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	likelihood = likelihood * dz * dy * dx;
+	return likelihood;
+}
+
+double P_X_less_Y(double* expv, double* cov_m, double max_x, double min_x, double dx, double max_y, double min_y, double dy){
+	// calculate P(X<Y)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[2] = {expv[0], expv[1]};
+	double projected_cov_m[4] = {cov_m[0], cov_m[1], cov_m[4], cov_m[5]};
+	gauss.set(projected_expv, projected_cov_m, 2);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int y_steps;
+	double x, y, y_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		y_lb = min( max(x, min_y), max_y );
+		y_steps = (max_y - y_lb) / dy;
+		
+		int k = 0;
+		if (y_lb == x) k = 1;
+		
+		for (k; k<=y_steps; k++) {
+			y = y_lb + k*dy;
+			double point[2] = {x, y};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	likelihood = likelihood * dy * dx;
+	return likelihood;
+}
+
+
+double P_Y_less_J(double* expv, double* cov_m, double max_y, double min_y, double dy, double max_j, double min_j, double dj){
+	// calculate P(Y < J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[2] = {expv[1], expv[2]};
+	double projected_cov_m[4] = {cov_m[1], cov_m[2], cov_m[9], cov_m[10]};
+	gauss.set(projected_expv, projected_cov_m, 2);
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int j_steps;
+	double y, j, j_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		j_lb = min( max(y, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == y) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			double point[2] = {y, j};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	likelihood = likelihood * dj * dy;
+	return likelihood;
+}
+
+double P_X_less_Y_less_J(double* expv, double* cov_m,
+                         double max_x, double min_x, double dx,
+						 double max_y, double min_y, double dy,
+						 double max_j, double min_j, double dj){
+	// calculate P(X < Y < J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[0], expv[1], expv[2]};
+	double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
+	                             cov_m[4], cov_m[5], cov_m[6],
+								 cov_m[8], cov_m[9], cov_m[10]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int y_steps, j_steps;
+	double x, y, j, y_lb, j_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		y_lb = min( max(x, min_y), max_y );
+		y_steps = (max_y - y_lb) / dy;
+		
+		int k = 0;
+		if (y_lb == x) k = 1;
+		
+		for (k; k<=y_steps; k++) {
+			y = y_lb + k*dy;
+			j_lb = min( max(y, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == y) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				double point[3] = {x, y, j};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	likelihood = likelihood * dj * dy * dx;
+	return likelihood;
+}
+
+double P_J_less_Z(double* expv, double* cov_m, double max_j, double min_j, double dj, double max_z, double min_z, double dz){
+	// calculate P(J < Z)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[2] = {expv[2], expv[3]};
+	double projected_cov_m[4] = {cov_m[10], cov_m[11], cov_m[14], cov_m[15]};
+	gauss.set(projected_expv, projected_cov_m, 2);
+	
+	unsigned int j_steps = (max_j - min_j) / dj;
+	unsigned int z_steps;
+	double j, z, z_lb;
+	
+	for (int i=0; i<=j_steps; i++) {
+		j = min_j + i*dj;
+		z_lb = min( max(j, min_z), max_z);
+		z_steps = (max_z - z_lb) / dz;
+		
+		int k = 0;
+		if (z_lb == j) k = 1;
+		
+		for (k; k<=z_steps; k++) {
+			z = z_lb + k*dz;
+			double point[2] = {j, z};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	likelihood = likelihood * dz * dj;
+	return likelihood;
+}
+
+double P_X_less_Y_J_less_Z(double* expv, double* cov_m,
+                           double max_x, double min_x, double dx,
+						   double max_y, double min_y, double dy,
+						   double max_j, double min_j, double dj,
+						   double max_z, double min_z, double dz){
+	// calculate P(X<Y, J<Z)
+	// j must go from at least y
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int y_steps, j_steps, z_steps;
+	double x, y, y_lb, j, j_lb, z, z_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		y_lb = min( max(x, min_y), max_y);
+		y_steps = (max_y - y_lb) / dy;
+		
+		int k = 0;
+		if (y_lb == x) k = 1;
+		
+		for (k; k<=y_steps; k++) {
+			y = y_lb + k*dy;
+			j_lb = min( max(y, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == y) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				z_lb = min( max(j, min_z), max_z);
+				z_steps = (max_z - z_lb) / dz;
+				
+				int m = 0;
+				if (z_lb == j) m = 1;
+				
+				for (m; m<=z_steps; m++) {
+					z = z_lb + m*dz;
+					double point[4] = {x, y, j, z};
+					likelihood += gauss.pdf(point);
+				}
+			}
+			
+		}
+	}
+	likelihood = likelihood * dz * dj * dy * dx;
+	return likelihood;
+}
+
+double P_Y_less_J_less_Z(double* expv, double* cov_m,
+                         double max_y, double min_y, double dy,
+						 double max_j, double min_j, double dj,
+						 double max_z, double min_z, double dz){
+	// calculate P(Y < J < Z)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[1], expv[2], expv[3]};
+	double projected_cov_m[9] = {cov_m[5], cov_m[6], cov_m[7],
+	                             cov_m[9], cov_m[10], cov_m[11],
+								 cov_m[13], cov_m[14], cov_m[15]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int j_steps, z_steps;
+	double y, j, j_lb, z, z_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		j_lb = min( max(y, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == y) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			z_lb = min( max(j, min_z), max_z);
+			z_steps = (max_z - z_lb) / dz;
+			
+			int l = 0;
+			if (z_lb == j) l = 1;
+			
+			for (l; l<=z_steps; l++) {
+				z = z_lb + l*dz;
+				double point[3] = {y, j, z};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	likelihood = likelihood * dz * dj * dy;
+	return likelihood;
+}
+
+double P_X_less_Y_less_J_less_Z(double* expv, double* cov_m,
+                                double max_x, double min_x, double dx,
+								double max_y, double min_y, double dy,
+								double max_j, double min_j, double dj,
+								double max_z, double min_z, double dz){
+	// calculate P(X < Y < J < Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int y_steps, j_steps, z_steps;
+	double x, y, y_lb, j, j_lb, z, z_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		y_lb = min( max(x, min_y), max_y);
+		y_steps = (max_y - y_lb) / dy;
+		
+		int k = 0;
+		if (y_lb == x) k = 1;
+		
+		for (k; k<=y_steps; k++) {
+			y = y_lb + k*dy;
+			j_lb = min( max(y, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == y) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				z_lb = min( max(y, min_j), max_j);
+				z_steps = (max_z - z_lb) / dz;
+				
+				int m = 0;
+				if (z_lb == j) m = 1;
+				
+				for (m; m<=z_steps; m++) {
+					z = z_lb + m*dz;
+					double point[4] = {x, y, j, z};
+					likelihood += gauss.pdf(point);
+				}
+			}
+		}
+	}
+	likelihood = likelihood * dz * dj * dy * dx;
+	return likelihood;
+}
+
+double P_J_eq_Z(double* expv, double* cov_m, double max_j, double min_j, double dj){
+	// calculate P(J = Z)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[2] = {expv[2], expv[3]};
+	double projected_cov_m[4] = {cov_m[10], cov_m[11], cov_m[14], cov_m[15]};
+	gauss.set(projected_expv, projected_cov_m, 2);
+	
+	unsigned int j_steps = (max_j - min_j);
+	double j;
+	
+	for (int i=0; i<=j_steps; i++) {
+		j = min_j + i*dj;
+		double point[2] = {j, j};
+		likelihood += gauss.pdf(point);
+	}
+	
+	likelihood = likelihood * dj;
+	return likelihood;
+}
+
+double P_X_less_Y_J_eq_Z(double* expv, double* cov_m,
+                         double max_x, double min_x, double dx,
+						 double max_y, double min_y, double dy,
+						 double max_j, double min_j, double dj){
+	// P(X < Y, J = Z)
+	// j starts from y
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int y_steps, j_steps;
+	double x, y, y_lb, j, j_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		y_lb = min( max(x, min_y), max_y);
+		y_steps = (max_y - y_lb) / dy;
+		
+		int k = 0;
+		if (y_lb == x) k = 1;
+		
+		for (k; k<=y_steps; k++) {
+			y = y_lb + k*dy;
+			j_lb = min( max(y, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == y) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				double point[4] = {x, y, j, j};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	likelihood *= dj * dy * dx;
+	return likelihood;
+}
+
+double P_Y_less_J_eq_Z(double* expv, double* cov_m, double max_y, double min_y, double dy, double max_j, double min_j, double dj){
+	// P(Y < J = Z)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[1], expv[2], expv[3]};
+	double projected_cov_m[9] = {cov_m[5], cov_m[6], cov_m[7],
+	                             cov_m[9], cov_m[10], cov_m[11],
+								 cov_m[13], cov_m[14], cov_m[15]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int j_steps;
+	double y, j, j_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		j_lb = min( max(y, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == y) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			double point[3] = {y, j, j};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	likelihood *= dj * dy;
+	return likelihood;
+}
+
+double P_X_less_Y_less_J_eq_Z(double* expv, double* cov_m,
+                              double max_x, double min_x, double dx,
+							  double max_y, double min_y, double dy,
+							  double max_j, double min_j, double dj){
+	// P(X < Y < J = Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int y_steps, j_steps;
+	double x, y, y_lb, j, j_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		y_lb = min( max(x, min_y), max_y);
+		y_steps = (max_y - y_lb) / dy;
+		
+		int k = 0;
+		if (y_lb == x) k = 1;
+		
+		for (k; k<=y_steps; k++) {
+			y = y_lb + k*dy;
+			j_lb = min( max(y, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == y) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				double point[4] = {x, y, j, j};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	likelihood *= dj * dy * dx;
+	return likelihood;
+}
+	
+double P_X_eq_J(double* expv, double* cov_m, double max_x, double min_x, double dx){
+	// P(X = J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[2] = {expv[0], expv[2]};
+	double projected_cov_m[4] = {cov_m[0], cov_m[2], cov_m[8], cov_m[10]};
+	gauss.set(projected_expv, projected_cov_m, 2);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	double x;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		double point[2] = {x, x};
+		likelihood += gauss.pdf(point);
+	}
+	
+	likelihood *= dx;
+	return likelihood;
+}
+
+double P_Y_less_X_eq_J(double* expv, double* cov_m,
+                       double max_y, double min_y, double dy,
+					   double max_x, double min_x, double dx){
+	// P(Y < X = J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[0], expv[1], expv[2]};
+	double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
+	                             cov_m[4], cov_m[5], cov_m[6],
+								 cov_m[8], cov_m[9], cov_m[10]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int x_steps;
+	double y, x, x_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		x_lb = min( max(y, min_x), max_x);
+		x_steps = (max_x - x_lb);
+		
+		int k = 0;
+		if (x_lb == y) k = 1;
+		
+		for (k; k<=x_steps; k++) {
+			x = x_lb + k*dx;
+			double point[3] = {x, y, x};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	
+	likelihood *= dx * dy;
+	return likelihood;
+}
+
+double P_X_eq_J_less_Z(double* expv, double* cov_m,
+                       double max_x, double min_x, double dx,
+					   double max_z, double min_z, double dz){
+	// P(X = J < Z)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[0], expv[2], expv[3]};
+	double projected_cov_m[9] = {cov_m[0], cov_m[2], cov_m[3],
+	                             cov_m[8], cov_m[10], cov_m[11],
+								 cov_m[12], cov_m[14], cov_m[15]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int z_steps;
+	double x, z, z_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		z_lb = min( max(x, min_z), max_z);
+		z_steps = (max_z - z_lb) / dz;
+		
+		int k = 0;
+		if (z_lb == x) k = 1;
+		
+		for (k; k<=z_steps; k++) {
+			z = z_lb + k*dz;
+			double point[3] = {x, x, z};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	
+	likelihood *= dz * dx;
+	return likelihood;
+}
+
+double P_Y_less_X_eq_J_less_Z(double* expv, double* cov_m,
+                              double max_y, double min_y, double dy,
+							  double max_x, double min_x, double dx,
+							  double max_z, double min_z, double dz){
+	// P(Y < X = J < Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int x_steps, z_steps;
+	double y, x, x_lb, z, z_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		x_lb = min( max(y, min_x), max_x);
+		x_steps = (max_x - x_lb) / dx;
+		
+		int k = 0;
+		if (x_lb == y) k = 1;
+		
+		for (k; k<=x_steps; k++) {
+			x = x_lb + k*dx;
+			z_lb = min( max(x, min_z), max_z);
+			z_steps = (max_z - z_lb) / dz;
+			
+			int l = 0;
+			if (z_lb == x) l = 1;
+			
+			for (l; l<=z_steps; l++) {
+				z = z_lb + l*dz;
+				double point[4] = {x, y, x, z};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	
+	likelihood *= dz * dx * dy;
+	return likelihood;
+}
+
+double P_Y_less_X(double* expv, double* cov_m,
+                  double max_y, double min_y, double dy,
+				  double max_x, double min_x, double dx){
+	// P(Y < X)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[2] = {expv[0], expv[1]};
+	double projected_cov_m[4] = {cov_m[0], cov_m[1], cov_m[4], cov_m[5]};
+	gauss.set(projected_expv, projected_cov_m, 2);
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int x_steps;
+	double y, x, x_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		x_lb = min( max(y, min_x), max_x);
+		x_steps = (max_x - x_lb) / dx;
+		
+		int k = 0;
+		if (x_lb == y) k = 1;
+		
+		for (k; k<=x_steps; k++) {
+			x = x_lb + k*dx;
+			double point[2] = {x, y};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	
+	likelihood *= dx * dy;
+	return likelihood;
+}
+
+double P_X_less_J(double* expv, double* cov_m,
+                  double max_x, double min_x, double dx,
+				  double max_j, double min_j, double dj){
+	// P(X < J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[2] = {expv[0], expv[2]};
+	double projected_cov_m[4] = {cov_m[0], cov_m[2], cov_m[8], cov_m[10]};
+	gauss.set(projected_expv, projected_cov_m, 2);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int j_steps;
+	double x, j, j_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		j_lb = min( max(x, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == x) k = 1;
+		
+		for (k; k<=x_steps; k++) {
+			j = j_lb + k*dj;
+			double point[2] = {x, j};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	
+	likelihood *= dj * dx;
+	return likelihood;
+}
+
+double P_Y_less_X_less_J(double* expv, double* cov_m,
+                         double max_y, double min_y, double dy,
+						 double max_x, double min_x, double dx,
+						 double max_j, double min_j, double dj){
+	// P(Y < X < J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[0], expv[1], expv[2]};
+	double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
+	                             cov_m[4], cov_m[5], cov_m[6],
+								 cov_m[8], cov_m[9], cov_m[10]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int x_steps, j_steps;
+	double y, x, x_lb, j, j_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		x_lb = min( max(y, min_x), max_x);
+		x_steps = (max_x - x_lb) / dx;
+		
+		int k = 0;
+		if (x_lb == y) k = 1;
+		
+		for (k; k<=x_steps; k++) {
+			x = x_lb + k*dx;
+			j_lb = min( max(x, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == x) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				double point[3] = {x, y, j};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	
+	likelihood *= dj * dx * dy;
+	return likelihood;
+}
+
+double P_Y_less_X_J_less_Z(double* expv, double* cov_m,
+                           double max_y, double min_y, double dy,
+						   double max_x, double min_x, double dx,
+						   double max_j, double min_j, double dj,
+						   double max_z, double min_z, double dz){
+	// P(Y < X, J < Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int x_steps, j_steps, z_steps;
+	double y, x, x_lb, j, j_lb, z, z_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		x_lb = min( max(y, min_x), max_x);
+		x_steps = (max_x - x_lb) / dx;
+		
+		int k = 0;
+		if (x_lb == y) k = 1;
+		
+		for (k; k<=x_steps; k++) {
+			x = x_lb + k*dx;
+			j_lb = min( max(x, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == x) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				z_lb = min( max(j, min_z), max_z);
+				z_steps = (max_z - z_lb) / dz;
+				
+				int m = 0;
+				if (z_lb == j) m = 1;
+				
+				for (m; m<=z_steps; m++) {
+					z = z_lb + m*dz;
+					double point[4] = {x, y, j, z};
+					likelihood += gauss.pdf(point);
+				}
+			}
+		}
+	}
+	
+	likelihood *= dz * dj * dx * dy;
+	return likelihood;
+}
+
+double P_X_less_J_less_Z(double* expv, double* cov_m,
+                         double max_x, double min_x, double dx,
+						 double max_j, double min_j, double dj,
+						 double max_z, double min_z, double dz){
+	// P(X < J < Z)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[0], expv[2], expv[3]};
+	double projected_cov_m[9] = {cov_m[0], cov_m[2], cov_m[3],
+	                             cov_m[8], cov_m[10], cov_m[11],
+								 cov_m[12], cov_m[13], cov_m[14]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int j_steps, z_steps;
+	double x, j, j_lb, z, z_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		j_lb = min( max(x, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == x) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			z_lb = min( max(j, min_z), max_z);
+			z_steps = (max_z - z_lb) / dz;
+			
+			int l = 0;
+			if (z_lb == j) l = 1;
+			
+			for (l; l<=z_steps; l++) {
+				z = z_lb + l*dz;
+				double point[3] = {x, j, z};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	
+	likelihood *= dz * dj * dx;
+	return likelihood;
+}
+
+double P_Y_less_X_less_J_less_Z(double* expv, double* cov_m,
+                                double max_y, double min_y, double dy,
+								double max_x, double min_x, double dx,
+								double max_j, double min_j, double dj,
+								double max_z, double min_z, double dz){
+	// P(Y < X < J < Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int x_steps, j_steps, z_steps;
+	double y, x, x_lb, j, j_lb, z, z_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		x_lb = min( max(y, min_x), max_x);
+		x_steps = (max_x - x_lb) / dx;
+		
+		int k = 0;
+		if (x_lb == y) k = 1;
+		
+		for (k; k<=x_steps; k++) {
+			x = x_lb + k*dx;
+			j_lb = min( max(x, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == x) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				z_lb = min( max(j, min_z), max_z);
+				z_steps = (max_z - z_lb) / dz;
+				
+				int m = 0;
+				if (z_lb == j) m = 1;
+				
+				for (m; m<=z_steps; m++) {
+					z = z_lb + m*dz;
+					double point[4] = {x, y, j, z};
+					likelihood += gauss.pdf(point);
+				}
+			}
+		}
+	}
+	
+	likelihood *= dz * dj * dx * dy;
+	return likelihood;
+}
+
+double P_Y_less_X_J_eq_Z(double* expv, double* cov_m,
+                         double max_y, double min_y, double dy,
+						 double max_x, double min_x, double dx,
+						 double max_j, double min_j, double dj){
+	// P(Y < X, J = Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int x_steps, j_steps;
+	double y, x, x_lb, j, j_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		x_lb = min( max(y, min_x), max_x);
+		x_steps = (max_x - x_lb) / dx;
+		
+		int k = 0;
+		if (x_lb == y) k = 1;
+		
+		for (k; k<=x_steps; k++) {
+			x = x_lb + k*dx;
+			j_lb = min( max(x, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == x) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				double point[4] = {x, y, j, j};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	
+	likelihood *= dj * dx * dy;
+	return likelihood;
+}
+
+double P_X_less_J_eq_Z(double* expv, double* cov_m,
+                       double max_x, double min_x, double dx,
+					   double max_j, double min_j, double dj){
+	// P(X < J = Z)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[0], expv[2], expv[3]};
+	double projected_cov_m[9] = {cov_m[0], cov_m[2], cov_m[3],
+	                             cov_m[8], cov_m[10], cov_m[11],
+								 cov_m[12], cov_m[14], cov_m[15]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int j_steps;
+	double x, j, j_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		j_lb = min( max(x, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == x) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			double point[3] = {x, j, j};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	
+	likelihood *= dj * dx;
+	return likelihood;
+}
+
+double P_Y_less_X_less_J_eq_Z(double* expv, double* cov_m,
+                              double max_y, double min_y, double dy,
+						      double max_x, double min_x, double dx,
+						      double max_j, double min_j, double dj){
+	// P(Y < X < J = Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int y_steps = (max_y - min_y) / dy;
+	unsigned int x_steps, j_steps;
+	double y, x, x_lb, j, j_lb;
+	
+	for (int i=0; i<=y_steps; i++) {
+		y = min_y + i*dy;
+		x_lb = min( max(y, min_x), max_x);
+		x_steps = (max_x - x_lb) / dx;
+		
+		int k = 0;
+		if (x_lb == y) k = 1;
+		
+		for (k; k<=x_steps; k++) {
+			x = x_lb + k*dx;
+			j_lb = min( max(x, min_j), max_j);
+			j_steps = (max_j - j_lb) / dj;
+			
+			int l = 0;
+			if (j_lb == x) l = 1;
+			
+			for (l; l<=j_steps; l++) {
+				j = j_lb + l*dj;
+				double point[4] = {x, y, j, j};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	
+	likelihood *= dj * dx * dy;
+	return likelihood;
+}
+
+double P_X_eq_Y_eq_J(double* expv, double* cov_m, double max_x, double min_x, double dx){
+	// P(X = Y = J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[0], expv[1], expv[2]};
+	double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
+	                             cov_m[4], cov_m[5], cov_m[6],
+								 cov_m[8], cov_m[9], cov_m[10],};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	double x;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		double point[3] = {x, x, x};
+		likelihood += gauss.pdf(point);
+	}
+	
+	likelihood *= dx;
+	return likelihood;
+}
+
+double P_X_eq_Y_eq_J_less_Z(double* expv, double* cov_m,
+                            double max_x, double min_x, double dx,
+							double max_z, double min_z, double dz){
+	// P(X = Y = J < Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int z_steps;
+	double x, z, z_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		z_lb = min( max(x, min_z), max_z);
+		z_steps = (max_z - z_lb);
+		
+		int k = 0;
+		if (z_lb == x) k = 1;
+		
+		for (k; k<=z_steps; k++) {
+			z = z_lb + k*dz;
+			double point[4] = {x, x, x, z};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	
+	likelihood *= dz * dx;
+	return likelihood;
+}
+
+double P_X_eq_Y(double* expv, double* cov_m, double max_x, double min_x, double dx){
+	// P(X = Y)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[2] = {expv[0], expv[1]};
+	double projected_cov_m[4] = {cov_m[0], cov_m[1], cov_m[4], cov_m[5]};
+	gauss.set(projected_expv, projected_cov_m, 2);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	double x;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		double point[2] = {x, x};
+		likelihood += gauss.pdf(point);
+	}
+	
+	likelihood *= dx;
+	return likelihood;
+}
+
+double P_X_eq_Y_less_J(double* expv, double* cov_m,
+                       double max_x, double min_x, double dx,
+					   double max_j, double min_j, double dj){
+	// P(X = Y < J)
+	Gauss gauss;
+	double likelihood = 0.0;
+	
+	double projected_expv[3] = {expv[0], expv[1], expv[2]};
+	double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
+	                             cov_m[4], cov_m[5], cov_m[6],
+								 cov_m[8], cov_m[9], cov_m[10]};
+	gauss.set(projected_expv, projected_cov_m, 3);
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int j_steps;
+	double x, j, j_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		j_lb = min( max(x, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == x) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			double point[3] = {x, x, j};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	
+	likelihood *= dj * dx;
+	return likelihood;
+}
+
+double P_X_eq_Y_J_less_Z(double* expv, double* cov_m,
+                         double max_x, double min_x, double dx,
+						 double max_j, double min_j, double dj,
+						 double max_z, double min_z, double dz){
+	// P(X = Y, J < Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int j_steps, z_steps;
+	double x, j, j_lb, z, z_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		j_lb = min( max(x, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == x) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			z_lb = min( max(j, min_z), max_z);
+			z_steps = (max_z - z_lb) / dz;
+			
+			int l = 0;
+			if (z_lb == j) l = 1;
+			
+			for (l; l<=z_steps; l++) {
+				z = z_lb + l*dz;
+				double point[4] = {x, x, j, z};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	
+	likelihood *= dz * dj * dx;
+	return likelihood;
+}
+
+double P_X_eq_Y_less_J_less_Z(double* expv, double* cov_m,
+                         double max_x, double min_x, double dx,
+						 double max_j, double min_j, double dj,
+						 double max_z, double min_z, double dz){
+	// P(X = Y < J < Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int j_steps, z_steps;
+	double x, j, j_lb, z, z_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		j_lb = min( max(x, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == x) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			z_lb = min( max(j, min_z), max_z);
+			z_steps = (max_z - z_lb) / dz;
+			
+			int l = 0;
+			if (z_lb == j) l = 1;
+			
+			for (l; l<=z_steps; l++) {
+				z = z_lb + l*dz;
+				double point[4] = {x, x, j, z};
+				likelihood += gauss.pdf(point);
+			}
+		}
+	}
+	
+	likelihood *= dz * dj * dx;
+	return likelihood;
+}
+
+double P_X_eq_Y_J_eq_Z(double* expv, double* cov_m,
+                       double max_x, double min_x, double dx,
+					   double max_j, double min_j, double dj){
+	// calculate P(X = Y, J = Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int j_steps;
+	double x, j, j_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		j_lb = min( max(x, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == x) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			double point[4] = {x, x, j, j};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	
+	likelihood *= dj * dx;
+	return likelihood;
+}
+
+double P_X_eq_Y_less_J_eq_Z(double* expv, double* cov_m,
+                            double max_x, double min_x, double dx,
+					        double max_j, double min_j, double dj){
+	// calculate P(X = Y < J = Z)
+	Gauss gauss;
+	gauss.set(expv, cov_m, 4);
+	
+	double likelihood = 0.0;
+	
+	unsigned int x_steps = (max_x - min_x) / dx;
+	unsigned int j_steps;
+	double x, j, j_lb;
+	
+	for (int i=0; i<=x_steps; i++) {
+		x = min_x + i*dx;
+		j_lb = min( max(x, min_j), max_j);
+		j_steps = (max_j - j_lb) / dj;
+		
+		int k = 0;
+		if (j_lb == x) k = 1;
+		
+		for (k; k<=j_steps; k++) {
+			j = j_lb + k*dj;
+			double point[4] = {x, x, j, j};
+			likelihood += gauss.pdf(point);
+		}
+	}
+	
+	likelihood *= dj * dx;
+	return likelihood;
+}
+
+double prob_A11(double* expv, double* cov_m, double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z, double dx, double dy, double dj, double dz){
+	// calculate P(X < Y = J < Z)
+	// check for certificate of case impossibility
+	if ( (max_y < min_x) || (max_y < min_j) )
+		return 0.0;
+	
+	double likelihood = 0.0;
+	
+	if (max_y < min_z) {
+		// P(X<Y=J<Z) = P(X<Y=J)
+		if (max_x < min_y) {
+			// P(X<Y=J) = P(Y=J)
+			likelihood = P_Y_eq_J(expv, cov_m, max_y, min_y, dy);
+		} else {
+			// P(X<Y=J)
+			likelihood = P_X_less_Y_eq_J(expv, cov_m, max_x, min_x, dx, max_y, min_y, dy);
+		}
+	} else {
+		if (max_x < min_y) {
+			// P(Y=J<Z)
+			likelihood = P_Y_eq_J_less_Z(expv, cov_m, max_y, min_y, dy, max_z, min_z, dz);
+		} else {
+			// P(X<Y=J<Z)
+			likelihood = P_X_less_Y_eq_J_less_Z(expv, cov_m, max_x, min_x, dx, max_y, min_y, dy, max_z, min_z, dz);
+		}
+	}
+	
+	return likelihood;
+}
+
+double prob_A12(double* expv, double* cov_m, double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z, double dx, double dy, double dj, double dz){
+	// calculate P(X < Y < J < Z)
 	
 	// check for certificate of case impossibility
 	if ( (max_y < min_x) || (max_y < min_j) )
 		return 0.0;
 	
 	double likelihood = 0.0;
-	Gauss gauss;
 	
-	if (max_y < min_z) {
-		// P(X<Y=J<Z) = P(X<Y=J)
-		if (max_x < min_y) {
-			// P(X<Y=J) = P(Y=J)
-			double projected_expv[2] = {expv[1], expv[2]};
-			double projected_cov_m[4] = {cov_m[5], cov_m[6], cov_m[9], cov_m[10]};
-			gauss.set(projected_expv, projected_cov_m, 2);
-			
-			unsigned int y_steps = (max_y - min_y) / dy;
-			double y;
-				
-			for (int i=0; i<=y_steps; i++) {
-				y = min_y + i*dy;
-				double point[2] = {y, y};
-				likelihood += gauss.pdf(point) * dy;
+	if (max_j < min_z) {
+		// P(X<Y<J<Z) = P(X<Y<J)
+		if (max_y < min_j) {
+			// P(X<Y<J) = P(X<Y)
+			if (max_x < min_y) {
+				// P(X<Y) = 1
+				likelihood = 1.0 / (dx * dy * dj * dz);
+			} else {
+				// P(X<Y)
+				likelihood = P_X_less_Y(expv, cov_m, max_x, min_x, dx, max_y, min_y, dy);
 			}
 		} else {
-			// P(X<Y=J)
-			double projected_expv[3] = {expv[0], expv[1], expv[2]};
-			double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
-			                             cov_m[4], cov_m[5], cov_m[6],
-										 cov_m[8], cov_m[9], cov_m[10]};
-			gauss.set(projected_expv, projected_cov_m, 3);
-			
-			unsigned int x_steps = (max_x - min_x) / dx;
-			unsigned int y_steps;
-			double x, y, y_lb;
-			
-			for (int i=0; i<=x_steps; i++) {
-				x = min_x + i*dx;
-				y_lb = min( max(x, min_y), max_y );
-				y_steps = (max_y - y_lb) / dy;
-				
-				for (int k=1; k<=y_steps; k++) {
-					y = y_lb + k*dy;
-					double point[3] = {x, y, y};
-					likelihood += gauss.pdf(point) * dy * dx;
-				}
+			// P(X<Y<J)
+			if (max_x < min_y) {
+				// P(X<Y<J) = P(Y<J)
+				likelihood = P_Y_less_J(expv, cov_m, max_y, min_y, dy, max_j, min_j, dj);
+			} else {
+				// P(X<Y<J)
+				likelihood = P_X_less_Y_less_J(expv, cov_m, max_x, min_x, dx, max_y, min_y, dy, max_j, min_j, dj);
 			}
 		}
 	} else {
-		if (max_x < min_y) {
-			// P(Y=J<Z)
-			double projected_expv[3] = {expv[1], expv[2], expv[3]};
-			double projected_cov_m[9] = {cov_m[5], cov_m[6], cov_m[7],
-			                             cov_m[9], cov_m[10], cov_m[11],
-										 cov_m[13], cov_m[14], cov_m[15]};
-			gauss.set(projected_expv, projected_cov_m, 3);
-			
-			unsigned int y_steps = (max_y - min_y) / dy;
-			unsigned int z_steps;
-			double y, z, z_lb;
-			
-			for (int i=0; i<=y_steps; i++) {
-				y = min_y + i*dy;
-				z_lb = min( max(y, min_z), max_z );
-				z_steps = (max_z - z_lb) / dz;
-				
-				for (int k=1; k<=z_steps; k++){
-					z = z_lb + k*dz;
-					double point[3] = {y, y, z};
-					likelihood += gauss.pdf(point) * dz * dy;
-				}
+		// P(X<Y<J<Z)
+		if (max_y < min_j) {
+			// P(X<Y<J<Z) = P(X<Y, X<J, J<Z)
+			if (max_x < min_y) {
+				// P(X<Y, J<Z) = P(J<Z)
+				likelihood = P_J_less_Z(expv, cov_m, max_j, min_j, dj, max_z, min_z, dz);
+			} else {
+				// P(X<Y, J<Z)
+				// j must go from at least x
+				likelihood = P_X_less_Y_J_less_Z(expv, cov_m, max_x, min_x, dx, max_y, min_y, dy, max_j, min_j, dj, max_z, min_z, dz);
 			}
 		} else {
-			// P(X<Y=J<Z)
-			gauss.set(expv, cov_m, 4);
-			
-			unsigned int x_steps = (max_x - min_x) / dx;
-			unsigned int y_steps, z_steps;
-			double x, y, z, y_lb, z_lb;
-			
-			for (int i=0; i<=x_steps; i++) {
-				x = min_x + i*dx;
-				y_lb = min( max(x, min_y), max_y );
-				y_steps = (max_y - y_lb) / dy;
-				
-				for (int k=1; k<=y_steps; k++) {
-					y = y_lb + k*dy;
-					z_lb = min( max(y, min_z), max_z );
-					z_steps = (max_z - z_lb) / dz;
-					
-					for (int l=1; l<=z_steps; l++) {
-						z = z_lb + l*dz;
-						double point[4] = {x, y, y, z};
-						likelihood += gauss.pdf(point) * dz * dy * dx;
-					}
-				}
+			// P(X<Y<J<Z)
+			if (max_x < min_y) {
+				// P(X<Y<J<Z) = P(Y<J<Z)
+				likelihood = P_Y_less_J_less_Z(expv, cov_m, max_y, min_y, dy, max_j, min_j, dj, max_z, min_z, dz);
+			} else {
+				// P(X<Y<J<Z)
+				likelihood = P_X_less_Y_less_J_less_Z(expv, cov_m, max_x, min_x, dx, max_y, min_y, dy, max_j, min_j, dj, max_z, min_z, dz);
 			}
 		}
 	}
@@ -195,309 +1510,35 @@ double prob_A11( double* expv, double* cov_m,
 	return likelihood;
 }
 
-
-
-
-
-double prob_A12(double* expv, double* cov_m, double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z, double dx, double dy, double dj, double dz){
-    // calculate P(X < Y < J < Z)
-    double likelihood = 0.0;
-
-    if (max_x < min_y) { // P(X < Y < J < Z) = P(Y < J < Z)
-        if (max_y < min_j) { // P(Y < J < Z) = P(J < Z)
-            if (max_j < min_z) {
-                likelihood = 1.0 / (dz * dj * dy * dx); // TODO: validate this idea
-            } else { // calculate P(J < Z)
-				Gauss gauss;
-				double projected_expv[2] = {expv[2], expv[3]};
-				double projected_cov_m[4] = {cov_m[10], cov_m[11], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 2);
-				
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double j, z;
-				
-				//#pragma omp parallel for private(j) reduction(+:likelihood)
-				for (int i=0; i<j_steps; i++) {
-					j = min_j + i*dj;
-					unsigned int z_steps = (max_z - j) / dz;
-					
-					//#pragma omp parallel for private(z) reduction(+:likelihood)
-					for (int k=0; k<z_steps; k++) {
-						z = j + k*dz;
-						double point[2] = {j, z};
-						likelihood += gauss.pdf(point) * dz * dj;
-					}
-				}
-			}
-        } else { // calculate P(Y < J < Z)
-            if (max_j < min_z) { // P(Y < J < Z) = P(Y < J)
-				Gauss gauss;
-				double projected_expv[2] = {expv[1], expv[2]};
-				double projected_cov_m[4] = {cov_m[1], cov_m[2], cov_m[5], cov_m[6]};
-				gauss.set(projected_expv, projected_cov_m, 2);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;				
-				double y, j;
-				
-				//#pragma omp parallel for private(y) reduction(+:likelihood)
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int j_steps = (max_j - y) / dj;
-					
-					//#pragma omp parallel for private(j) reduction(+:likelihood)
-					for (int k=0; k<j_steps; k++) {
-						j = y + k*dj;
-						double point[2] = {y, j};
-						likelihood += gauss.pdf(point) * dj * dy;
-					}
-				}
-            } else { // calculate P(Y < J < Z)
-				Gauss gauss;
-				double projected_expv[3] = {expv[1], expv[2], expv[3]};
-				double projected_cov_m[9] = {cov_m[5], cov_m[6], cov_m[7],
-				                            cov_m[9], cov_m[10], cov_m[11],
-				                            cov_m[13], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				double y, j, z;
-				
-				//#pragma omp parallel for private(y) reduction(+:likelihood)
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int j_steps = (max_j - y) / dy;
-					
-					//#pragma omp parallel for private(j) reduction(+:likelihood)
-					for (int k=0; k<j_steps; k++) {
-						j = y + k*dj;
-						unsigned int z_steps = (max_z - j) / dz;
-						
-						//#pragma omp parallel for private(z) reduction(+:likelihood)
-						for (int l=0; l<z_steps; l++) {
-							z = j + l*dz;
-							double point[3] = {y, j, z};
-							likelihood += gauss.pdf(point) * dz * dj * dy;
-						}
-					}
-				}
-			}
-		}
-    } else { // calculate P(X < Y < J < Z)
-        if (max_y < min_j) { // P(X < Y < J < Z) = P(X < Y, J < Z)
-            if (max_j < min_z) { // P(X < Y, J < Z) = P(X < Y)
-				Gauss gauss;
-				double projected_expv[2] = {expv[0], expv[1]};
-				double projected_cov_m[4] = {cov_m[0], cov_m[1], cov_m[4], cov_m[5]};
-				gauss.set(projected_expv, projected_cov_m, 2);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, y;
-                
-				//#pragma omp parallel for private(x) reduction(+:likelihood)
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int y_steps = (max_y - x) / dy;
-					
-					//#pragma omp parallel for private(y) reduction(+:likelihood)
-					for (int j=0; j<y_steps; j++) {
-						y = x + j*dy;
-						double point[2] = {x, y};
-						likelihood += gauss.pdf(point) * dy * dx;
-					}
-				}
-            } else { // calculate P(X < Y, J < Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double x, y, j, z;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int y_steps = (max_y - x) / dy;
-					
-					for (int k=0; k<y_steps; k++) {
-						y = x + k*dy;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = min_j + l*dj;
-							unsigned int z_steps = (max_z - j) / dz;
-							
-							for (int m=0; m<z_steps; m++) {
-								z = j + m*dz;
-								double point[4] = {x, y, j, z};
-								likelihood += gauss.pdf(point) * dz * dj * dy * dx;
-							}
-						}
-					}
-				}
-			}
-        } else { // calculate P(X < Y < J < Z)
-            if (max_j < min_z) { // P(X < Y < J < Z) = P(X < Y < J)
-				Gauss gauss;
-				double projected_expv[3] = {expv[0], expv[1], expv[2]};
-				double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
-				                            cov_m[4], cov_m[5], cov_m[6],
-											cov_m[8], cov_m[9], cov_m[11]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-			
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, y, j;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int y_steps = (max_y - x) / dy;
-					
-					for (int k=0; k<y_steps; k++) {
-						y = x + k*dy;
-						unsigned int j_steps = (max_j - y) / dj;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = y + l*dj;
-							double point[3] = {x, y, j};
-							likelihood += gauss.pdf(point) * dj * dy * dx;
-						}
-					}
-				}
-            } else { // calculate P(X < Y < J < Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, y, j, z;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int y_steps = (max_y - x) / dy;
-					
-					for (int k=0; k<y_steps; k++) {
-						y = x + k*dy;
-						unsigned int j_steps = (max_j - y) / dj;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = y + l*dj;
-							unsigned int z_steps = (max_z - j) / dz;
-							
-							for (int m=0; m<z_steps; m++) {
-								z = j + m*dz;
-								double point[4] = {x, y, j, z};
-								likelihood += gauss.pdf(point) * dz * dj * dy * dx;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-    return likelihood;
-}
-
 double prob_A13(double* expv, double* cov_m, double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z, double dx, double dy, double dj, double dz){
 	// calculate P(X < Y < J = Z)
     double likelihood = 0.0;
-
-    if (max_x < min_y) { // P(X < Y < J = Z) = P(Y < J = Z)
-        if (max_y < min_j) { // P(Y < J = Z) = P(J = Z)
-            if (max_j < min_z) { // P(J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(J = Z)
-				Gauss gauss;
-				double projected_expv[2] = {expv[2], expv[3]};
-				double projected_cov_m[4] = {cov_m[10], cov_m[11], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 2);
-				
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double j;
-				
-				for (int i=0; i<j_steps; i++) {
-					j = min_j + i*dj;
-					double point[2] = {j, j};
-					likelihood += gauss.pdf(point) * dj;
-				}
+	
+	if (max_j < min_z) {
+		return 0.0;
+	} else {
+		// P(X < Y < J = Z)
+		if (max_y < min_j) {
+			// P(X < Y < J = Z) = P(X < Y, J = Z)
+			if (max_x < min_y) {
+				// P(J = Z)
+				likelihood = P_J_eq_Z(expv, cov_m, max_j, min_j, dj);
+			} else {
+				// P(X < Y, J = Z)
+				likelihood = P_X_less_Y_J_eq_Z(expv, cov_m, max_x, min_x, dx, max_y, min_y, dy, max_j, min_j, dj);
 			}
-        } else { // calculate P(Y < J = Z)
-            if (max_j < min_z) { // P(Y < J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(Y < J = Z)
-				Gauss gauss;
-				double projected_expv[3] = {expv[1], expv[2], expv[3]};
-				double projected_cov_m[9] = {cov_m[5], cov_m[6], cov_m[7],
-											cov_m[9], cov_m[10], cov_m[11],
-											cov_m[13], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				double y, j, z;
-				
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int j_steps = (max_j - y) / dj;
-					
-					for (int k=0; k<j_steps; k++) {
-						j = y + k*dj;
-						double point[3] = {y, j, j};
-						likelihood += gauss.pdf(point) * dj * dy;
-					}
-				}
-			}
-		}
-    } else { // calculate P(X < Y < J = Z)
-        if (max_y < min_j) { // P(X < Y < J = Z) = P(X < Y, J = Z)
-            if (max_j < min_z) { // P(X < Y, J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(X < Y, J = Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double x, y, j;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int y_steps = (max_y - x) / dy;
-					
-					for (int k=0; k<y_steps; k++){
-						y = x + k*dy;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = min_j + l*dj;
-							
-							double point[4] = {x, y, j, j};
-							likelihood += gauss.pdf(point) * dj * dy * dx;
-						}
-					}
-				}
-			}
-        } else { // calculate P(X < Y < J = Z)
-            if (max_j < min_z) { // P(X < Y < J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(X < Y < J = Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, y, j;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int y_steps = (max_y - x) / dy;
-					
-					for (int k=0; k<y_steps; k++) {
-						y = x + k*dy;
-						unsigned int j_steps = (max_j - y) / dj;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = y + l*dj;
-							double point[4] = {x, y, j, j};
-							likelihood += gauss.pdf(point) * dj * dy * dx;
-						}
-					}
-				}
+		} else {
+			// P(X < Y < J = Z)
+			if (max_x < min_y) {
+				// P(Y < J = Z)
+				likelihood = P_Y_less_J_eq_Z(expv, cov_m, max_y, min_y, dy, max_j, min_j, dj);
+			} else {
+				// P(X < Y < J = Z)
+				likelihood = P_X_less_Y_less_J_eq_Z(expv, cov_m, max_x, min_x, dx, max_y, min_y, dy, max_j, min_j, dj);
 			}
 		}
 	}
+
     return likelihood;
 }
 
@@ -505,97 +1546,29 @@ double prob_A21(double* expv, double* cov_m, double min_x, double max_x, double 
 	// calculate P(Y < X = J < Z)
     double likelihood = 0.0;
 
-    if (max_y < min_x) { // P(Y < X = J < Z) = P(X = J < Z)
-        if (max_x < min_j) { // P(X = J < Z) = 0
-            likelihood = 0.0;
-        } else { // calculate P(X = J < Z)
-            if (max_j < min_z) { // P(X = J < Z) = P(X = J)
-				Gauss gauss;
-				double projected_expv[2] = {expv[0], expv[2]};
-				double projected_cov_m[4] = {cov_m[0], cov_m[2], cov_m[8], cov_m[10]};
-				gauss.set(projected_expv, projected_cov_m, 2);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					double point[2] = {x, x};
-					likelihood += gauss.pdf(point) * dx;
-				}
-            } else { // calculate P(X = J < Z)
-				Gauss gauss;
-				double projected_expv[3] = {expv[0], expv[2], expv[3]};
-				double projected_cov_m[9] = {cov_m[0], cov_m[2], cov_m[3],
-				                            cov_m[8], cov_m[10], cov_m[11],
-											cov_m[12], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, z;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int z_steps = (max_z - x) / dz;
-					
-					for (int j=0; j<z_steps; j++) {
-						z = x + j*dz;
-						double point[3] = {x, x, z};
-						likelihood += gauss.pdf(point) * dz * dx;
-					}
-				}
-			}
+	// check for certificate of impossibility
+	if (max_x < min_j) return 0.0;
+	
+	if (max_j < min_z) {
+		// P(Y < X = J)
+		if (max_y < min_x) {
+			// P(X = J)
+			likelihood = P_X_eq_J(expv, cov_m, max_x, min_x, dx);
+		} else {
+			// P(Y < X = J)
+			likelihood = P_Y_less_X_eq_J(expv, cov_m, max_y, min_y, dy, max_x, min_x, dx);
 		}
-    } else { // calculate P(Y < X = J < Z)
-        if (max_x < min_j) { // P(Y < X = J < Z) = 0
-            likelihood = 0.0;
-        } else { // calculate P(Y < X = J < Z)
-            if (max_j < min_z) { // P(Y < X = J < Z) = P(Y < X = J)
-				Gauss gauss;
-				double projected_expv[3] = {expv[0], expv[1], expv[2]};
-				double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
-				                            cov_m[4], cov_m[5], cov_m[6],
-			                                cov_m[8], cov_m[9], cov_m[10]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				double y, x;
-				
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int x_steps = (max_x - y) / dx;
-					
-					for (int k=0; k<x_steps; k++) {
-						x = y + k*dx;
-						double point[3] = {x, y, x};
-						likelihood += gauss.pdf(point) * dx * dy;
-					}
-				}
-            } else { // calculate P(Y < X = J < Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				double y, x, z;
-				
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int x_steps = (max_x - y) / dx;
-					
-					for (int k=0; k<x_steps; k++) {
-						x = y + k*dx;
-						unsigned int z_steps = (max_z - x) / dz;
-						
-						for (int l=0; l<z_steps; l++) {
-							z = x + l*dz;
-							double point[4] = {x, y, x, z};
-							likelihood += gauss.pdf(point) * dz * dx * dy;
-						}
-					}
-				}
-			}
+	} else {
+		// P(Y < X = J < Z)
+		if (max_y < min_x) {
+			// P(X = J < Z)
+			likelihood = P_X_eq_J_less_Z(expv, cov_m, max_x, min_x, dx, max_z, min_z, dz);
+		} else {
+			// P(Y < X = J < Z)
+			likelihood = P_Y_less_X_eq_J_less_Z(expv, cov_m, max_y, min_y, dy, max_x, min_x, dx, max_z, min_z, dz);
 		}
 	}
+	
     return likelihood;
 }
 
@@ -603,182 +1576,49 @@ double prob_A22(double* expv, double* cov_m, double min_x, double max_x, double 
 	// calculate P(Y < X < J < Z)
     double likelihood = 0.0;
 
-    if (max_y < min_x) { // P(Y < X < J < Z) = P(X < J < Z)
-        if (max_x < min_j) { // P(X < J < Z) = P(J < Z)
-            if (max_j < min_z) { // P(J < Z) = 1
-                likelihood = 1.0 / (dx * dy * dj * dz);  // TODO: validate approach
-            } else { // calculate # P(J < Z)
-				Gauss gauss;
-				double projected_expv[2] = {expv[2], expv[3]};
-				double projected_cov_m[4] = {cov_m[10], cov_m[11], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 2);
-				
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double j, z;
-				
-				for (int i=0; i<j_steps; i++) {
-					j = min_j + i*dj;
-					unsigned int z_steps = (max_z - j) / dz;
-					
-					for (int k=0; k<z_steps; k++) {
-						z = j + k*dz;
-						double point[2] = {j, z};
-						likelihood += gauss.pdf(point) * dz * dj;
-					}
-				}
+	if (max_j < min_z) {
+		// P(Y < X < J)
+		if (max_x < min_j) {
+			// P(Y < X)
+			if (max_y < min_x) {
+				likelihood = 1.0 / (dx * dy * dj * dz);
+			} else {
+				// P(Y < X)
+				likelihood = P_Y_less_X(expv, cov_m, max_y, min_y, dy, max_x, min_x, dx);
 			}
-        } else { // P(X < J < Z)
-            if (max_j < min_z) { // P(X < J < Z) = P(X < J)
-				Gauss gauss;
-				double projected_expv[2] = {expv[0], expv[2]};
-				double projected_cov_m[4] = {cov_m[0], cov_m[2], cov_m[8], cov_m[10]};
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, j;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int j_steps = (max_j - x) / dj;
-					
-					for (int k=0; k<j_steps; k++) {
-						j = x + k*dj;
-						double point[2] = {x, j};
-						likelihood += gauss.pdf(point) * dj * dx;
-					}
-				}
-            } else { // P(X < J < Z)
-				Gauss gauss;
-				double projected_expv[3] = {expv[0], expv[2], expv[3]};
-				double projected_cov_m[9] = {cov_m[0], cov_m[2], cov_m[3],
-				                            cov_m[8], cov_m[10], cov_m[11],
-											cov_m[12], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, j, z;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int j_steps = (max_j - x) / dj;
-					
-					for (int k=0; k<j_steps; k++) {
-						j = x + k*dj;
-						unsigned int z_steps = (max_z - j) / dz;
-						
-						for (int l=0; l<z_steps; l++) {
-							z = j + l*dz;
-							double point[3] = {x, j, z};
-							likelihood += gauss.pdf(point) * dz * dj * dx;
-						}
-					}
-				}
+		} else {
+			// P(Y < X < J)
+			if (max_y < min_x) {
+				// P(X < J)
+				likelihood = P_X_less_J(expv, cov_m, max_x, min_x, dx, max_j, min_j, dj);
+			} else {
+				// P(Y < X < J)
+				likelihood = P_Y_less_X_less_J(expv, cov_m, max_y, min_y, dy, max_x, min_x, dx, max_j, min_j, dj);
 			}
 		}
-    } else { // calculate P(Y < X < J < Z)
-        if (max_x < min_j) { // P(Y < X < J < Z) = P(Y < X, J < Z)
-            if (max_j < min_z) { // P(Y < X, J < Z) = P(Y < X)
-				Gauss gauss;
-				double projected_expv[2] = {expv[0], expv[1]};
-				double projected_cov_m[4] = {cov_m[0], cov_m[1], cov_m[4], cov_m[5]};
-				gauss.set(projected_expv, projected_cov_m, 2);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				double y, x;
-				
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int x_steps = (max_x - y) / dx;
-					
-					for (int j=0; j<x_steps; j++) {
-						x = y + j*dx;
-						double point[2] = {x, y};
-						likelihood += gauss.pdf(point) * dx * dy;
-					}
-				}
-            } else { // calculate P(Y < X, J < Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double y, x, j, z;
-				
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int x_steps = (max_x - y) / dx;
-					
-					for (int k=0; k<x_steps; k++) {
-						x = y + k*dx;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = min_j + l*dj;
-							unsigned int z_steps = (max_z - j) / dz;
-							
-							for (int m=0; m<z_steps; m++) {
-								z = j + m*dz;
-								double point[4] = {x, y, j, z};
-								likelihood += gauss.pdf(point) * dz * dj * dx * dy;
-							}
-						}
-					}
-				}
+	} else {
+		// P(Y < X < J < Z)
+		if (max_x < min_j) {
+			// P(Y < X, J < Z)
+			if (max_y < min_x) {
+				// P(J < Z)
+				likelihood = P_J_less_Z(expv, cov_m, max_j, min_j, dj, max_z, min_z, dz);
+			} else {
+				// P(Y < X, J < Z)
+				likelihood = P_Y_less_X_J_less_Z(expv, cov_m, max_y, min_y, dy, max_x, min_x, dx, max_j, min_j, dj, max_z, min_z, dz);
 			}
-        } else { // calculate P(Y < X < J < Z)
-            if (max_j < min_z) { // P(Y < X < J < Z) = P(Y < X < J)
-				Gauss gauss;
-				double projected_expv[3] = {expv[0], expv[1], expv[2]};
-				double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
-				                            cov_m[4], cov_m[5], cov_m[6],
-											cov_m[8], cov_m[9], cov_m[10]};
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				double y, x, j;
-				
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int x_steps = (max_x - y) / dx;
-					
-					for (int k=0; k<x_steps; k++) {
-						x = y + k*dx;
-						unsigned int j_steps = (max_j - x) / dj;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = x + l*dj;
-							double point[3] = {x, y, j};
-							likelihood += gauss.pdf(point) * dj * dx * dy;
-						}
-					}
-				}
-            } else { // calculate P(Y < X < J < Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				double y, x, j, z;
-				
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int x_steps = (max_x - y) / dx;
-					
-					for (int k=0; k<x_steps; k++) {
-						x = y + k*dx;
-						unsigned int j_steps = (max_j - x) / dj;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = x + l*dj;
-							unsigned int z_steps = (max_z - j) / dz;
-							
-							for (int m=0; m<z_steps; m++) {
-								z = j + m*dz;
-								double point[4] = {x, y, j, z};
-								likelihood += gauss.pdf(point) * dz * dj * dx * dy;
-							}
-						}
-					}
-				}
+		} else {
+			// P(Y < X < J < Z)
+			if (max_y < min_x) {
+				// P(X < J < Z)
+				likelihood = P_X_less_J_less_Z(expv, cov_m, max_x, min_x, dx, max_j, min_j, dj, max_z, min_z, dz);
+			} else {
+				// P(Y < X < J < Z)
+				likelihood = P_Y_less_X_less_J_less_Z(expv, cov_m, max_y, min_y, dy, max_x, min_x, dx, max_j, min_j, dj, max_z, min_z, dz);
 			}
 		}
 	}
+    
     return likelihood;
 }
 
@@ -786,106 +1626,31 @@ double prob_A23(double* expv, double* cov_m, double min_x, double max_x, double 
 	// calculate P(Y < X < J = Z)
     double likelihood = 0.0;
 
-    if (max_y < min_x) { // P(Y < X < J = Z) = P(X < J = Z)
-        if (max_x < min_j) { // P(X < J = Z) = P(J = Z)
-            if (max_j < min_z) { // P(J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(J = Z)
-				Gauss gauss;
-				double projected_expv[2] = {expv[2], expv[3]};
-				double projected_cov_m[4] = {cov_m[10], cov_m[11], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 2);
-				
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double j;
-				
-				for (int i=0; i<j_steps; i++) {
-					j = min_j + i*dj;
-					double point[2] = {j, j};
-					likelihood += gauss.pdf(point) * dj;
-				}
+	if (max_j < min_z) {
+		likelihood = 0.0;
+	} else {
+		// P(Y < X < J = Z)
+		if (max_x < min_j) {
+			// P(Y < X, J = Z)
+			if (max_y < min_x) {
+				// P(J = Z)
+				likelihood = P_J_eq_Z(expv, cov_m, max_j, min_j, dj);
+			} else {
+				// P(Y < X, J = Z)
+				likelihood = P_Y_less_X_J_eq_Z(expv, cov_m, max_y, min_y, dy, max_x, min_x, dx, max_j, min_j, dj);
 			}
-        } else { // calculate P(X < J = Z)
-            if (max_j < min_z) { // P(X < J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(X < J = Z)
-				Gauss gauss;
-				double projected_expv[3] = {expv[0], expv[2], expv[3]};
-				double projected_cov_m[9] = {cov_m[0], cov_m[2], cov_m[3],
-				                            cov_m[8], cov_m[10], cov_m[11],
-											cov_m[12], cov_m[14], cov_m[15]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, j;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int j_steps = (max_j - x) / dj;
-					
-					for (int k=0; k<j_steps; k++) {
-						j = x + k*dj;
-						double point[3] = {x, j, j};
-						likelihood += gauss.pdf(point) * dj * dx;
-					}
-				}
-			}
-		}
-    } else { // calculate P(Y < X < J = Z)
-        if (max_x < min_j) { // P(Y < X < J = Z) = P(Y < X, J = Z)
-            if (max_j < min_z) { // P(Y < X, J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(Y < X, J = Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double y, x, j;
-				
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int x_steps = (max_x - y) / dx;
-					
-					for (int k=0; k<x_steps; k++) {
-						x = y + k*dx;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = min_j + l*dj;
-							double point[4] = {x, y, j, j};
-							likelihood += gauss.pdf(point) * dj * dx * dy;
-						}
-					}
-				}
-			}
-        } else { // calculate P(Y < X < J = Z)
-            if (max_j < min_z) { // P(Y < X < J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(Y < X < J = Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int y_steps = (max_y - min_y) / dy;
-				double y, x, j, z;
-				
-				for (int i=0; i<y_steps; i++) {
-					y = min_y + i*dy;
-					unsigned int x_steps = (max_x - y) / dx;
-					
-					for (int k=0; k<x_steps; k++) {
-						x = y + k*dx;
-						unsigned int j_steps = (max_j - x) / dj;
-						
-						for (int l=0; l<j_steps; l++) {
-							j = x + l*dj;
-							double point[4] = {x, y, j, j};
-							likelihood += gauss.pdf(point) * dj * dx * dy;
-						}
-					}
-				}
+		} else {
+			// P(Y < X < J = Z)
+			if (max_y < min_x) {
+				// P(X < J = Z)
+				likelihood = P_X_less_J_eq_Z(expv, cov_m, max_x, min_x, dx, max_j, min_j, dj);
+			} else {
+				// P(Y < X < J = Z)
+				likelihood = P_Y_less_X_less_J_eq_Z(expv, cov_m, max_y, min_y, dy, max_x, min_x, dx, max_j, min_j, dj);
 			}
 		}
 	}
+   
     return likelihood;
 }
 
@@ -893,48 +1658,34 @@ double prob_A31(double* expv, double* cov_m, double min_x, double max_x, double 
 	// calculate P(X = Y = J < Z)
     double likelihood = 0.0;
 
-    if (max_x < min_y) { // P(X = Y = J < Z) = 0
-        likelihood = 0.0;
-    } else { // calculate P(X = Y = J < Z)
-        if (max_y < min_j) { // P(X = Y = J < Z) = 0
-            likelihood = 0.0;
-        } else { // calculate P(X = Y = J < Z)
-            if (max_j < min_z) { // P(X = Y = J < Z) = P(X = Y = J)
-				Gauss gauss;
-				double projected_expv[3] = {expv[0], expv[1], expv[2]};
-				double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
-				                            cov_m[4], cov_m[5], cov_m[6],
-											cov_m[8], cov_m[9], cov_m[10]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					double point[3] = {x, x, x};
-					likelihood += gauss.pdf(point) * dx;
-				}
-            } else { // calculate P(X = Y = J < Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, z;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int z_steps = (max_z - x) / dz;
-					
-					for (int k=0; k<z_steps; k++) {
-						z = x + k*dz;
-						double point[4] = {x, x, x, z};
-						likelihood += gauss.pdf(point) * dz * dx;
-					}
-				}
+	if (max_j < min_z) {
+		// P(X = Y = J)
+		if (max_y < min_j) {
+			likelihood = 0.0;
+		} else {
+			// P(X = Y = J)
+			if (max_x < min_y) {
+				likelihood = 0.0;
+			} else {
+				// P(X = Y = J)
+				likelihood = P_X_eq_Y_eq_J(expv, cov_m, max_x, min_x, dx);
+			}
+		}
+	} else {
+		// P(X = Y = J < Z)
+		if (max_y < min_j) {
+			likelihood = 0.0;
+		} else {
+			// P(X = Y = J < Z)
+			if (max_x < min_y) {
+				likelihood = 0.0;
+			} else {
+				// P(X = Y = J < Z)
+				likelihood = P_X_eq_Y_eq_J_less_Z(expv, cov_m, max_x, min_x, dx, max_z, min_z, dz);
 			}
 		}
 	}
+    
     return likelihood;	
 }
 
@@ -942,94 +1693,46 @@ double prob_A32(double* expv, double* cov_m, double min_x, double max_x, double 
 	// calculate P(X = Y < J < Z)
     double likelihood = 0.0;
 
-    if (max_x < min_y) { // P(X = Y < J < Z) = 0
-        likelihood = 0.0;
-    } else { // calculate P(X = Y < J < Z)
-        if (max_y < min_j) { // P(X = Y < J < Z) = P(X = Y, J < Z)
-            if (max_j < min_z) { // P(X = Y, J < Z) = P(X = Y)
-				Gauss gauss;
-				double projected_expv[2] = {expv[0], expv[1]};
-				double projected_cov_m[4] = {cov_m[0], cov_m[1], cov_m[4], cov_m[5]};
-				gauss.set(projected_expv, projected_cov_m, 2);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dj;
-					double point[2] = {x, x};
-					likelihood += gauss.pdf(point) * dx;
-				}
-            } else { // calculate P(X = Y, J < Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double x, j, z;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					
-					for (int k=0; k<j_steps; k++) {
-						j = min_j + k*dj;
-						unsigned int z_steps = (max_z - j) / dz;
-						
-						for (int l=0; l<z_steps; l++) {
-							z = j + l*dz;
-							double point[4] = {x, x, j, z};
-							likelihood += gauss.pdf(point) * dz * dj * dx;
-						}
-					}
-				}
+	if (max_j < min_z) {
+		// P(X = Y < J)
+		if (max_y < min_j) {
+			// P(X = Y)
+			if (max_x < min_y) {
+				likelihood = 0.0;
+			} else {
+				// P(X = Y)
+				likelihood = P_X_eq_Y(expv, cov_m, max_x, min_x, dx);
 			}
-        } else { // calculate P(X = Y < J < Z)
-            if (max_j < min_z) { // P(X = Y < J < Z) = P(X = Y < J)
-				Gauss gauss;
-				double projected_expv[3] = {expv[0], expv[1], expv[2]};
-				double projected_cov_m[9] = {cov_m[0], cov_m[1], cov_m[2],
-				                            cov_m[4], cov_m[5], cov_m[6],
-											cov_m[8], cov_m[9], cov_m[10]};
-				gauss.set(projected_expv, projected_cov_m, 3);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, j;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int j_steps = (max_j - x) / dj;
-					
-					for (int k=0; k<j_steps; k++) {
-						j = x + k*dj;
-						double point[3] = {x, x, j};
-						likelihood += gauss.pdf(point) * dj * dx;
-					}
-				}
-            } else { // calculate P(X = Y < J < Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, j, z;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int j_steps = (max_j - x) / dj;
-					
-					for (int k=0; k<j_steps; k++) {
-						j = x + k*dj;
-						unsigned int z_steps = (max_z - j) / dz;
-						
-						for (int l=0; l<z_steps; l++) {
-							z = j + l*dz;
-							double point[4] = {x, x, j, z};
-							likelihood += gauss.pdf(point) * dz * dj * dx;
-						}
-					}
-				}
+		} else {
+			// P(X = Y < J)
+			if (max_x < min_y) {
+				likelihood = 0.0;
+			} else {
+				// P(X = Y < J)
+				likelihood = P_X_eq_Y_less_J(expv, cov_m, max_x, min_x, dx, max_j, min_j, dj);
+			}
+		}
+	} else {
+		// P(X = Y < J < Z)
+		if (max_y < min_j) {
+			// P(X = Y, J < Z)
+			if (max_x < min_y) {
+				likelihood = 0.0;
+			} else {
+				// P(X = Y, J < Z)
+				likelihood = P_X_eq_Y_J_less_Z(expv, cov_m, max_x, min_x, dx, max_j, min_j, dj, max_z, min_z, dz);
+			}
+		} else {
+			// P(X = Y < J < Z)
+			if (max_x < min_y) {
+				likelihood = 0.0;
+			} else {
+				// P(X = Y < J < Z)
+				likelihood = P_X_eq_Y_less_J_less_Z(expv, cov_m, max_x, min_x, dx, max_j, min_j, dj, max_z, min_z, dz);
 			}
 		}
 	}
+    
     return likelihood;
 }
 
@@ -1037,57 +1740,33 @@ double prob_A33(double* expv, double* cov_m, double min_x, double max_x, double 
 	// calculate P(X = Y < J = Z)
     double likelihood = 0.0;
 
-    if (max_x < min_y) { // P(X = Y < J = Z) = 0
-        likelihood = 0.0;
-    } else { // calculate P(X = Y < J = Z)
-        if (max_y < min_j) { // P(X = Y < J = Z) = P(X = Y, J = Z)
-            if (max_j < min_z) { // P(X = Y, J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(X = Y, J = Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				unsigned int j_steps = (max_j - min_j) / dj;
-				double x, j;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					
-					for (int k=0; k<j_steps; k++) {
-						j = min_j + k*dj;
-						double point[4] = {x, x, j, j};
-						likelihood += gauss.pdf(point) * dj * dx;
-					}
-				}
+	if (max_j < min_z) {
+		likelihood = 0.0;
+	} else {
+		// calculate P(X = Y < J = Z)
+		if (max_y < min_j) {
+			// calculate P(X = Y, J = Z)
+			if (max_x < min_y) {
+				likelihood = 0.0;
+			} else {
+				// calculate P(X = Y, J = Z)
+				likelihood = P_X_eq_Y_J_eq_Z(expv, cov_m, max_x, min_x, dx, max_j, min_j, dj);
 			}
-        } else { // calculate P(X = Y < J = Z)
-            if (max_j < min_z) { // P(X = Y < J = Z) = 0
-                likelihood = 0.0;
-            } else { // calculate P(X = Y < J = Z)
-				Gauss gauss;
-				gauss.set(expv, cov_m, 4);
-				
-				unsigned int x_steps = (max_x - min_x) / dx;
-				double x, j;
-				
-				for (int i=0; i<x_steps; i++) {
-					x = min_x + i*dx;
-					unsigned int j_steps = (max_j - x) / dj;
-					
-					for (int k=0; k<j_steps; k++) {
-						j = x + k*dj;
-						double point[4] = {x, x, j, j};
-						likelihood += gauss.pdf(point) * dj * dx;
-					}
-				}
+		} else {
+			// calculate P(X = Y < J = Z)
+			if (max_x < min_y) {
+				likelihood = 0.0;
+			} else {
+				// calculate P(X = Y < J = Z)
+				likelihood = P_X_eq_Y_less_J_eq_Z(expv, cov_m, max_x, min_x, dx, max_j, min_j, dj);
 			}
 		}
 	}
+    
     return  likelihood;
 }
 
-double* get_probabilities(double** dims, unsigned int n, double eff_sample_size){
+double* get_probabilities(double** dims, unsigned int n, double eff_sample_size, double c=3.0, double bins=20.0){
 	double* expv = new double[4];
 	
 	#pragma omp parallel sections
@@ -1109,22 +1788,19 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size)
 
 	for (int i=0; i<16; i++) cov_m[i] *= eff_sample_size / n;
 	
-	double c = 3.0; // how many stdevs from the mean should be included in the computations
-    double bins = 20.0;
-	
-	double min_x = expv[0] - c * sqrt(cov_m[0]);
+	double min_x = max( expv[0] - c * sqrt(cov_m[0]) , 0.0);
 	double max_x = expv[0] + c * sqrt(cov_m[0]);
     double dx = (max_x - min_x) / bins;
 
-    double min_y = expv[1] - c * sqrt(cov_m[5]);
+    double min_y = max( expv[1] - c * sqrt(cov_m[5]), 0.0);
 	double max_y = expv[1] + c * sqrt(cov_m[5]);
     double dy = (max_y - min_y) / bins;
 	
-	double min_j = expv[2] - c * sqrt(cov_m[10]);
+	double min_j = max( expv[2] - c * sqrt(cov_m[10]), 0.0);
 	double max_j = expv[2] + c * sqrt(cov_m[10]);
     double dj = (max_j - min_j) / bins;
 	
-	double min_z = expv[3] - c * sqrt(cov_m[15]);
+	double min_z = max( expv[3] - c * sqrt(cov_m[15]), 0.0);
 	double max_z = expv[3] + c * sqrt(cov_m[15]);
     double dz = (max_z - min_z) / bins;
 	
@@ -1132,19 +1808,11 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size)
 	
 	double* likelihoods = new double[9]{0, 0, 0, 0, 0, 0, 0, 0, 0};
 	
-	cout << "X: epxv " << expv[0] << ", var " << cov_m[0] << ", dx " << dx << endl;
-	cout << "Y: epxv " << expv[1] << ", var " << cov_m[5] << ", dy " << dy << endl;
-	cout << "J: epxv " << expv[2] << ", var " << cov_m[10] << ", dj " << dj << endl;
-	cout << "Z: epxv " << expv[3] << ", var " << cov_m[15] << ", dz " << dz << endl;
-	
-	cout << "calculating Aij likelihood" << endl;
-	
 	#pragma omp parallel sections
 	{
 		#pragma omp section
 		likelihoods[0] = prob_A11(expv, cov_m, min_x, max_x, min_y, max_y, min_j, max_j, min_z, max_z, dx, dy, dj, dz);
 		
-		/*
 		#pragma omp section
 		likelihoods[1] = prob_A12(expv, cov_m, min_x, max_x, min_y, max_y, min_j, max_j, min_z, max_z, dx, dy, dj, dz);
 		
@@ -1168,9 +1836,7 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size)
 		
 		#pragma omp section
 		likelihoods[8] = prob_A33(expv, cov_m, min_x, max_x, min_y, max_y, min_j, max_j, min_z, max_z, dx, dy, dj, dz);
-		*/
 	}
-	cout << "Finished calculating Aij likelihood" << endl;
 	
 	double normalizing_term = 0.0;
 	for (int i=0; i<9; i++) normalizing_term += likelihoods[i];
