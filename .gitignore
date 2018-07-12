@@ -1,4 +1,4 @@
 *.o
 *.dll
 Python/*.pyc
-Python/idea
+Python/.idea
