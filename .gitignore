@@ -2,3 +2,4 @@
 *.dll
 Python/*.pyc
 Python/.idea
+*.egg-info
