@@ -13,12 +13,11 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	double* Y = embed(y, n, emb_dim, tau);
 	double* J = diophantine_sum(x, y, n, emb_dim, tau);
 	double* Z = shuffled_diophantine_sum(x, y, n, emb_dim, tau);
-	
+
 	// update n
 	n -= (emb_dim - 1) * tau;
 	
 	// calculate kNN distances for the whole k-range
-	
 	double** X_nn_distances = knn_distances(X, n, emb_dim, k_range[len_range-1]);
 	double** Y_nn_distances = knn_distances(Y, n, emb_dim, k_range[len_range-1]);
 	double** J_nn_distances = knn_distances(J, n, emb_dim, k_range[len_range-1]);
@@ -59,7 +58,7 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	}
 	
 	// aggregate probabilities
-	double* final_probs = new double[5];
+	double* final_probs = new double[5]{0.0, 0.0, 0.0, 0.0, 0.0};
 	
 	for (int i=0; i<5; i++) {
 		for (int j=0; j<len_range; j++) {

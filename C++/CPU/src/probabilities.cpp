@@ -253,7 +253,7 @@ double P_Y_less_J(double* expv, double* cov_m, double max_y, double min_y, doubl
 	double likelihood = 0.0;
 	
 	double projected_expv[2] = {expv[1], expv[2]};
-	double projected_cov_m[4] = {cov_m[1], cov_m[2], cov_m[9], cov_m[10]};
+	double projected_cov_m[4] = {cov_m[5], cov_m[6], cov_m[9], cov_m[10]};
 	gauss.set(projected_expv, projected_cov_m, 2);
 	
 	unsigned int y_steps = (max_y - min_y) / dy;
@@ -954,7 +954,7 @@ double P_X_less_J_less_Z(double* expv, double* cov_m,
 	double projected_expv[3] = {expv[0], expv[2], expv[3]};
 	double projected_cov_m[9] = {cov_m[0], cov_m[2], cov_m[3],
 	                             cov_m[8], cov_m[10], cov_m[11],
-								 cov_m[12], cov_m[13], cov_m[14]};
+								 cov_m[12], cov_m[14], cov_m[15]};
 	gauss.set(projected_expv, projected_cov_m, 3);
 	
 	unsigned int x_steps = (max_x - min_x) / dx;
@@ -1785,7 +1785,7 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size,
 	}
 	
 	double* cov_m = cov_matr(dims, n);
-
+	
 	for (int i=0; i<16; i++) cov_m[i] *= eff_sample_size / n;
 	
 	double min_x = max( expv[0] - c * sqrt(cov_m[0]) , 0.0);
@@ -1839,6 +1839,7 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size,
 	}
 	
 	double normalizing_term = 0.0;
+	
 	for (int i=0; i<9; i++) normalizing_term += likelihoods[i];
 	for (int i=0; i<9; i++) likelihoods[i] /= normalizing_term;
 	

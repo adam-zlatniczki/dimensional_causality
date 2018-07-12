@@ -189,7 +189,7 @@ double* inv_cov_m_4x4(double* m, double& detOut){
 
     detOut = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
 
-    if (detOut == 0)
+    if (detOut == 0.0)
         return NULL;
 
     detOut = 1.0 / detOut;
