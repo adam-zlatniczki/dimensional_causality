@@ -1,6 +1,7 @@
 *.o
 *.dll
 *.so
+build
 Python/*.pyc
 Python/.idea
 *.egg-info
