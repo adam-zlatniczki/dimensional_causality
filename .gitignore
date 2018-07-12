@@ -1,6 +1,8 @@
 *.o
 *.dll
 *.so
+*.exe
+*.bat
 build
 Python/*.pyc
 Python/.idea
