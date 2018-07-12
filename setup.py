@@ -2,6 +2,7 @@
 
 import os
 from setuptools.command.install import install
+from wheel.bdist_wheel import bdist_wheel
 import glob
 from distutils.core import setup
 
@@ -21,11 +22,18 @@ def compile_CPU_library():
 		os.remove(file)
 
 
-class CompileLibraries(install):
+class CustomInstall(install):
 	"""Customized setuptools install command that compiles the C++ source into a shared library."""
 	def run(self):
 		compile_CPU_library()
 		install.run(self)
+
+
+class CustomWheel(bdist_wheel):
+	"""Customized setuptools install command that compiles the C++ source into a shared library."""
+	def run(self):
+		compile_CPU_library()
+		bdist_wheel.run(self)
 
 
 setup(name='Dimensional Causality',
@@ -35,7 +43,8 @@ setup(name='Dimensional Causality',
       author_email='adam.zlatniczki@cs.bme.hu',
       url='https://github.com/adam-zlatniczki/dimensional_causality',
 	  cmdclass={
-         'install': CompileLibraries
+         'install': CustomInstall,
+		 'bdist_wheel': CustomWheel
       },
 	  packages=['dimensional_causality'],
 	  package_dir={'dimensional_causality': 'Python/dimensional_causality'},
