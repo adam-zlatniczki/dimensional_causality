@@ -7,3 +7,4 @@ build
 Python/*.pyc
 Python/.idea
 *.egg-info
+*.csv
