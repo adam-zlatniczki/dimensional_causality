@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "alglibmisc.h"
+#include <iostream>
 
 using namespace alglib;
 using namespace std;

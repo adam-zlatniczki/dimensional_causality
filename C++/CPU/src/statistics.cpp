@@ -14,58 +14,56 @@ double exp_val(double* x_dims, const unsigned int n){
 	return exp_val / n;
 }
 
-void cov(double** matr, unsigned int n, double* cov_m, unsigned int i, unsigned int j){
-	double sum_1 = 0.0;
-	double sum_2 = 0.0;
-	double sqr_sum = 0.0;
 
-	#pragma parallel for simd reduction(+:sum_1, sum_2, sqr_sum)
+void cov(double** matr, double* expvs, unsigned int n, double* cov_m, unsigned int i, unsigned int j){
+	double sqr_sum = 0.0;
+	
+	#pragma omp parallel for simd reduction(+:sqr_sum)
 	for (int k=0; k<n; k++) {
-		sum_1 += matr[i][k];
-		sum_2 += matr[j][k];
-		sqr_sum += matr[i][k] * matr[j][k];
+		sqr_sum += (matr[i][k] - expvs[i]) * (matr[j][k] - expvs[j]);
 	}
 	
-	double cov = (sqr_sum / n) - (sum_1 * sum_2 / (n * n));
-
+	double cov = sqr_sum / (n - 1);
+	
 	cov_m[i*4+j] = cov;
 	cov_m[j*4+i] = cov;
 }
 
-double* cov_matr(double** dims, const unsigned int n){
+
+double* cov_matr(double** dims, double* expvs, const unsigned int n){
 	double* cov_m = new double[16];
 	
 	#pragma omp parallel sections
 	{
 		#pragma omp section
-		cov(dims, n, cov_m, 0, 0);
+		cov(dims, expvs, n, cov_m, 0, 0);
 		
 		#pragma omp section
-		cov(dims, n, cov_m, 0, 1);
+		cov(dims, expvs, n, cov_m, 0, 1);
 		
 		#pragma omp section
-		cov(dims, n, cov_m, 0, 2);
+		cov(dims, expvs, n, cov_m, 0, 2);
 		
 		#pragma omp section
-		cov(dims, n, cov_m, 0, 3);
+		cov(dims, expvs, n, cov_m, 0, 3);
 		
 		#pragma omp section
-		cov(dims, n, cov_m, 1, 1);
+		cov(dims, expvs, n, cov_m, 1, 1);
 		
 		#pragma omp section
-		cov(dims, n, cov_m, 1, 2);
+		cov(dims, expvs, n, cov_m, 1, 2);
 		
 		#pragma omp section
-		cov(dims, n, cov_m, 1, 3);
+		cov(dims, expvs, n, cov_m, 1, 3);
 		
 		#pragma omp section
-		cov(dims, n, cov_m, 2, 2);
+		cov(dims, expvs, n, cov_m, 2, 2);
 		
 		#pragma omp section
-		cov(dims, n, cov_m, 2, 3);
+		cov(dims, expvs, n, cov_m, 2, 3);
 		
 		#pragma omp section
-		cov(dims, n, cov_m, 3, 3);
+		cov(dims, expvs, n, cov_m, 3, 3);
 	}
 	
 	return cov_m;

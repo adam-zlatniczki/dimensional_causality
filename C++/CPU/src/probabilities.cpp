@@ -81,12 +81,16 @@ double Gauss::pdf(double* point){
 }
 
 
-void check_feasibility(double min_x, double min_y, double min_j, double max_j, double max_z){
-	if (min_x > max_j) throw std::invalid_argument( "D_X > D_J, which should be impossible! Verify that your data is not stochastic." );
-	if (min_y > max_j) throw std::invalid_argument( "D_Y > D_J, which should be impossible! Verify that your data is not stochastic." );
-	if (min_x > max_z) throw std::invalid_argument( "D_X > D_Z, which should be impossible! Verify that your data is not stochastic." );
-	if (min_y > max_z) throw std::invalid_argument( "D_Y > D_J, which should be impossible! Verify that your data is not stochastic." );
-	if (min_j > max_z) throw std::invalid_argument( "D_J > D_Z, which should be impossible! Verify that your data is not stochastic." );
+bool check_feasibility(double min_x, double min_y, double min_j, double max_j, double max_z){
+	bool feasible = true;
+	
+	if (min_x > max_j) feasible = false;
+	if (min_y > max_j) feasible = false; 
+	if (min_x > max_z) feasible = false;
+	if (min_y > max_z) feasible = false;
+	if (min_j > max_z) feasible = false;
+	
+	return feasible;
 }
 
 double P_Y_eq_J(double* expv, double* cov_m, double max_y, double min_y, double dy){
@@ -512,7 +516,7 @@ double P_J_eq_Z(double* expv, double* cov_m, double max_j, double min_j, double 
 	double projected_cov_m[4] = {cov_m[10], cov_m[11], cov_m[14], cov_m[15]};
 	gauss.set(projected_expv, projected_cov_m, 2);
 	
-	unsigned int j_steps = (max_j - min_j);
+	unsigned int j_steps = (max_j - min_j) / dj;
 	double j;
 	
 	for (int i=0; i<=j_steps; i++) {
@@ -683,7 +687,7 @@ double P_Y_less_X_eq_J(double* expv, double* cov_m,
 	for (int i=0; i<=y_steps; i++) {
 		y = min_y + i*dy;
 		x_lb = min( max(y, min_x), max_x);
-		x_steps = (max_x - x_lb);
+		x_steps = (max_x - x_lb) / dx;
 		
 		int k = 0;
 		if (x_lb == y) k = 1;
@@ -1201,7 +1205,7 @@ double P_X_eq_Y_eq_J_less_Z(double* expv, double* cov_m,
 	for (int i=0; i<=x_steps; i++) {
 		x = min_x + i*dx;
 		z_lb = min( max(x, min_z), max_z);
-		z_steps = (max_z - z_lb);
+		z_steps = (max_z - z_lb) / dz;
 		
 		int k = 0;
 		if (z_lb == x) k = 1;
@@ -1457,8 +1461,9 @@ double prob_A12(double* expv, double* cov_m, double min_x, double max_x, double 
 	// calculate P(X < Y < J < Z)
 	
 	// check for certificate of case impossibility
-	if ( (max_y < min_x) || (max_y < min_j) )
+	if ( (max_y < min_x) || (max_j < min_y) ){
 		return 0.0;
+	}
 	
 	double likelihood = 0.0;
 	
@@ -1514,6 +1519,9 @@ double prob_A13(double* expv, double* cov_m, double min_x, double max_x, double 
 	// calculate P(X < Y < J = Z)
     double likelihood = 0.0;
 	
+	// check for certificate of impossibility
+	if (max_y < min_x) return 0.0;
+	
 	if (max_j < min_z) {
 		return 0.0;
 	} else {
@@ -1547,7 +1555,7 @@ double prob_A21(double* expv, double* cov_m, double min_x, double max_x, double 
     double likelihood = 0.0;
 
 	// check for certificate of impossibility
-	if (max_x < min_j) return 0.0;
+	if ((max_x < min_y) || (max_x < min_j)) return 0.0;
 	
 	if (max_j < min_z) {
 		// P(Y < X = J)
@@ -1575,6 +1583,9 @@ double prob_A21(double* expv, double* cov_m, double min_x, double max_x, double 
 double prob_A22(double* expv, double* cov_m, double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z, double dx, double dy, double dj, double dz){
 	// calculate P(Y < X < J < Z)
     double likelihood = 0.0;
+	
+	// check for certificate of impossibility
+	if (max_x < min_y) return 0.0;
 
 	if (max_j < min_z) {
 		// P(Y < X < J)
@@ -1625,6 +1636,9 @@ double prob_A22(double* expv, double* cov_m, double min_x, double max_x, double 
 double prob_A23(double* expv, double* cov_m, double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z, double dx, double dy, double dj, double dz){
 	// calculate P(Y < X < J = Z)
     double likelihood = 0.0;
+	
+	// check for certificate of impossibility
+	if ((max_x < min_y) || (max_j < min_z)) return 0.0;
 
 	if (max_j < min_z) {
 		likelihood = 0.0;
@@ -1657,7 +1671,7 @@ double prob_A23(double* expv, double* cov_m, double min_x, double max_x, double 
 double prob_A31(double* expv, double* cov_m, double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z, double dx, double dy, double dj, double dz){
 	// calculate P(X = Y = J < Z)
     double likelihood = 0.0;
-
+	
 	if (max_j < min_z) {
 		// P(X = Y = J)
 		if (max_y < min_j) {
@@ -1784,7 +1798,7 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size,
 		expv[3] = exp_val(dims[3], n);
 	}
 	
-	double* cov_m = cov_matr(dims, n);
+	double* cov_m = cov_matr(dims, expv, n);
 	
 	for (int i=0; i<16; i++) cov_m[i] *= eff_sample_size / n;
 	
@@ -1804,7 +1818,13 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size,
 	double max_z = expv[3] + c * sqrt(cov_m[15]);
     double dz = (max_z - min_z) / bins;
 	
-	check_feasibility(min_x, min_y, min_j, max_j, max_z);
+	// check if the dimensions satisfy the feasibility conditions
+	// return zeros to indicate that probabilities can't be calculated
+	if (!check_feasibility(min_x, min_y, min_j, max_j, max_z)){
+		delete[] cov_m;
+		double* case_probs = new double[5]{0.0, 0.0, 0.0, 0.0, 0.0};
+		return case_probs;
+	}
 	
 	double* likelihoods = new double[9]{0, 0, 0, 0, 0, 0, 0, 0, 0};
 	
@@ -1840,7 +1860,7 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size,
 	
 	double normalizing_term = 0.0;
 	
-	for (int i=0; i<9; i++) normalizing_term += likelihoods[i];
+	for (int i=0; i<9; i++) normalizing_term += likelihoods[i];	
 	for (int i=0; i<9; i++) likelihoods[i] /= normalizing_term;
 	
 	double p_x_causes_y, p_y_causes_x, p_circular, p_common_cause, p_independence;

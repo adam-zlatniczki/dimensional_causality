@@ -20,7 +20,7 @@ libc.infer_causality.restype = POINTER(c_double)
 """ Load library End """
 
 
-def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0):
+def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, downsample_rate=1):
     """
     Returns the probability of the possible causal cases in the following order:
         P(X -> Y), P(X <-> Y), P(X <- Y), P(X <- Z -> Y), P(X | Y)
@@ -66,6 +66,7 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0):
     eps = c_double(eps)
     c = c_double(c)
     bins = c_double(bins)
+    downsample_rate = c_uint(downsample_rate)
 
     probs = libc.infer_causality(
         cast(x_arr, POINTER(c_double)),
@@ -77,7 +78,8 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0):
         len_range,
         eps,
         c,
-        bins
+        bins,
+        downsample_rate
     )
 
     return [probs[i] for i in range(5)]

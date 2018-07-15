@@ -102,5 +102,7 @@ double** trim_data(double* x_dims, double* y_dims, double* j_dims, double* z_dim
 		}
 	}
 	
+	delete[] mask;
+	
 	return trimmed_data;
 }

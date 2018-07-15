@@ -42,13 +42,18 @@ int test_embedding(){
 	}
 }
 
-int test_diophantine_sum(){
+int test_get_manifolds(){
 	double x[10] = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0 };
 	double y[10] = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0 };
-
-	const double a = sqrt(2.0) - 1;
 	
-	double* J_test = diophantine_sum(x, y, 10, 3, 2);
+	double** test_manifolds = get_manifolds(x, y, 10, 3, 2);
+	double *X_test, *Y_test, *J_test, *Z_test;
+	X_test = test_manifolds[0];
+	Y_test = test_manifolds[1];
+	J_test = test_manifolds[2];
+	Z_test = test_manifolds[3];
+	
+	double a = sqrt(2.0) - 1;
 	double J_expected[18] = {
 		5.0*a, 3.0*a, 1.0*a,
 		6.0*a, 4.0*a, 2.0*a,
@@ -58,32 +63,25 @@ int test_diophantine_sum(){
 		10.0*a, 8.0*a, 6.0*a
 	};
 	
-	bool match = true;
-	for (int i = 0; i < 18; i++) {
-		if (!doubles_equal(J_test[i], J_expected[i])) {
-			match = false;
-			break;
-		}
-	}
+	double X_expected[18] = {
+		5.0, 3.0, 1.0,
+		6.0, 4.0, 2.0,
+		7.0, 5.0, 3.0,
+		8.0, 6.0, 4.0,
+		9.0, 7.0, 5.0,
+		10.0, 8.0, 6.0
+	};
 	
-	delete[] J_test;
+	double Y_expected[18] = {
+		5.0, 3.0, 1.0,
+		6.0, 4.0, 2.0,
+		7.0, 5.0, 3.0,
+		8.0, 6.0, 4.0,
+		9.0, 7.0, 5.0,
+		10.0, 8.0, 6.0
+	};
 	
-	if(match){
-		return 0;
-	}else{
-		return 1;
-	}
-}
-
-int test_shuffled_diophantine_sum(){
-	srand(0);
-	
-	double x[10] = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0 };
-	double y[10] = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0 };
-	
-	const double a = sqrt(2.0);
-	
-	double* Z_test = shuffled_diophantine_sum(x, y, 10, 3, 2);
+	a = sqrt(2);
 	double Z_expected[18] = {
 		a*4.0 - 2.0, a*9.0 - 5.0, a*10.0 - 4.0,
 		a*8.0 - 10.0, a*2.0 - 3.0, a*1.0 - 8.0,
@@ -92,16 +90,38 @@ int test_shuffled_diophantine_sum(){
 		a*7.0 - 9.0, a*5.0 - 7.0, a*4.0 - 2.0,
 		a*3.0 - 6.0, a*6.0 - 1.0, a*8.0 - 10.0
 	};
-
+	
 	bool match = true;
-	for (int i = 0; i < 18; i++) {
+	
+	for (int i=0; i<18; i++) {
+		if (!doubles_equal(X_test[i], X_expected[i])) {
+			match = false;
+			cout << "X: " << X_test[i] << " " << X_expected[i] << endl;
+			//break;
+		}
+		if (!doubles_equal(Y_test[i], Y_expected[i])) {
+			match = false;
+			cout << "Y: " << Y_test[i] << " " << Y_expected[i] << endl;
+			//break;
+		}
+		if (!doubles_equal(J_test[i], J_expected[i])) {
+			match = false;
+			cout << "J: " << J_test[i] << " " << J_expected[i] << endl;
+			//break;
+		}
 		if (!doubles_equal(Z_test[i], Z_expected[i])) {
 			match = false;
-			break;
+			cout << "Z: " << Z_test[i] << " " << Z_expected[i] << endl;
+			//break;
 		}
 	}
 	
+	delete[] X_test;
+	delete[] Y_test;
+	delete[] J_test;
 	delete[] Z_test;
+	
+	delete[] test_manifolds;
 	
 	if(match){
 		return 0;
@@ -109,6 +129,8 @@ int test_shuffled_diophantine_sum(){
 		return 1;
 	}
 }
+
+
 
 int test_knn_dist(){
 	double* matr = new double[15]{2.0, 1.0, 5.0, 1.0, 5.0, 3.0, 3.0, 4.0, 4.0, 5.0, 2.0, 2.0, 4.0, 3.0, 1.0};
@@ -302,7 +324,10 @@ int test_cov_m(){
 	data[2] = new double[10]{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
 	data[3] = new double[10]{-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0, -10.0};
 	
-	double* cov_m_test = cov_matr(data, 10);
+	double* expvs = new double[4];
+	for (int i=0; i<4; i++)	expvs[i] = exp_val(data[i], 10);
+	
+	double* cov_m_test = cov_matr(data, expvs, 10);
 	
 	double cov_m_expected[16] = {
 		8.25, -8.25, 8.25, -8.25, -8.25, 8.25, -8.25, 8.25, 8.25, -8.25, 8.25, -8.25, -8.25, 8.25, -8.25, 8.25
@@ -316,6 +341,8 @@ int test_cov_m(){
 			break;
 		}
 	}
+	
+	delete[] expvs;
 	
 	delete[] data[0];
 	delete[] data[1];
@@ -491,7 +518,7 @@ int test_infer_causality(){
 	unsigned int* k_range = new unsigned int[10]{4, 8, 12, 16, 20, 24, 28, 32, 36, 40};
 	
 	cout << "Starting inference" << endl;
-	double* probs = infer_causality(x, y, 10000, 4, 1, k_range, 10, 0.05);
+	double* probs = infer_causality(x, y, 10000, 4, 1, k_range, 10, 0.05, 3.0, 40.0, 2);
 	cout << "Finished inference" << endl;
 	
 	cout << "P(X->Y) = " << probs[0] << endl;
@@ -514,8 +541,7 @@ int main(){
 	cout << "=====================" << endl;
 
 	cout << "Test time-delay embedding failed: " << test_embedding() << endl;
-	cout << "Test Diophantine sum failed: " << test_diophantine_sum() << endl;
-	cout << "Test shuffled Diophantine sum failed: " << test_shuffled_diophantine_sum() << endl;
+	cout << "Test manifold generation failed: " << test_get_manifolds() << endl;
 	
 	cout << "Test kNN distances (ALGLIB) failed: " << test_knn_dist() << endl;
 	
