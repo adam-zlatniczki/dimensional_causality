@@ -4,7 +4,7 @@
 *.exe
 *.bat
 build
-Python/*.pyc
+*.pyc
 Python/.idea
 *.egg-info
 *.csv
