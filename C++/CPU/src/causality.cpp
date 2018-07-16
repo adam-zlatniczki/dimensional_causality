@@ -8,6 +8,7 @@
 
 using namespace std;
 
+
 double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_dim, unsigned int tau, unsigned int* k_range, unsigned int len_range, double eps/*=0.05*/, double c/*=3.0*/, double bins/*=20.0*/, unsigned int downsample_rate/*=1*/){
 	// embed manifolds
 	double** manifolds = get_manifolds(x, y, n, emb_dim, tau, downsample_rate);
@@ -35,7 +36,6 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	
 	for (int i=0; i<len_range; i++) {
 		k = k_range[i];
-		
 		// estimate local dimensions
 		double* x_dims = local_dims(X_nn_distances, n, k);
 		double* y_dims = local_dims(Y_nn_distances, n, k);
@@ -93,4 +93,10 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	delete[] manifolds;
 	
 	return final_probs;
+}
+
+void infer_causality_R(double* probs_return, double* x, double* y, unsigned int* n, unsigned int* emb_dim, unsigned int* tau, unsigned int* k_range, unsigned int* len_range, double* eps/*=0.05*/, double* c/*=3.0*/, double* bins/*=20.0*/, unsigned int* downsample_rate/*=1*/){
+	double* probs = infer_causality(x, y, *n, *emb_dim, *tau, k_range, *len_range, *eps, *c, *bins, *downsample_rate);
+	for (int i=0; i<5; i++) probs_return[i] = probs[i];
+	delete[] probs;
 }

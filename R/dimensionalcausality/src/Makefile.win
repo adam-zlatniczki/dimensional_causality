@@ -1,0 +1,7 @@
+all:
+	g++ -g -O3 -fPIC -fopenmp -I../../../C++/CPU/include -I../../../C++/CPU/lib/alglib -c ../../../C++/CPU/lib/alglib/alglibinternal.cpp ../../../C++/CPU/lib/alglib/alglibmisc.cpp ../../../C++/CPU/lib/alglib/ap.cpp ../../../C++/CPU/src/causality.cpp ../../../C++/CPU/src/dimensions.cpp ../../../C++/CPU/src/embedding.cpp ../../../C++/CPU/src/probabilities.cpp ../../../C++/CPU/src/statistics.cpp ../../../C++/CPU/src/trimming.cpp
+	g++ -shared -fopenmp -o dimensional_causality_cpu.dll alglibinternal.o alglibmisc.o ap.o causality.o dimensions.o embedding.o probabilities.o statistics.o trimming.o
+	rm -rf *.o
+
+clean:
+	rm -f dimensional_causality_cpu.dll
