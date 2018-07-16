@@ -17,8 +17,8 @@ else:
 def compile_CPU_library():
 	''' Compile the CPU-only version of the source. '''
 	print "Compiling and linking shared library..."
-	os.system('g++ -g -O3 -fPIC -fopenmp -IC++/CPU/include -IC++/CPU/lib/alglib -c C++/CPU/lib/alglib/alglibinternal.cpp C++/CPU/lib/alglib/alglibmisc.cpp C++/CPU/lib/alglib/ap.cpp C++/CPU/src/causality.cpp C++/CPU/src/dimensions.cpp C++/CPU/src/embedding.cpp C++/CPU/src/probabilities.cpp C++/CPU/src/statistics.cpp C++/CPU/src/trimming.cpp')
-	os.system('g++ -shared -fopenmp -o Python/dimensional_causality/dimensional_causality_cpu' + extension + ' alglibinternal.o alglibmisc.o ap.o causality.o dimensions.o embedding.o probabilities.o statistics.o trimming.o')
+	os.system('g++ -g -O3 -fPIC -fopenmp -I../C++/CPU/include -I../C++/CPU/lib/alglib -c ../C++/CPU/lib/alglib/alglibinternal.cpp ../C++/CPU/lib/alglib/alglibmisc.cpp ../C++/CPU/lib/alglib/ap.cpp ../C++/CPU/src/causality.cpp ../C++/CPU/src/dimensions.cpp ../C++/CPU/src/embedding.cpp ../C++/CPU/src/probabilities.cpp ../C++/CPU/src/statistics.cpp ../C++/CPU/src/trimming.cpp')
+	os.system('g++ -shared -fopenmp -o dimensional_causality/dimensional_causality_cpu' + extension + ' alglibinternal.o alglibmisc.o ap.o causality.o dimensions.o embedding.o probabilities.o statistics.o trimming.o')
 	tmp_files = glob.glob('*.o')
 	for file in tmp_files:
 		os.remove(file)
@@ -50,7 +50,7 @@ setup(name='Dimensional Causality',
 		 'bdist_wheel': CustomWheel
       },
 	  packages=['dimensional_causality'],
-	  package_dir={'dimensional_causality': 'Python/dimensional_causality'},
+	  package_dir={'dimensional_causality': 'dimensional_causality'},
 	  package_data={'dimensional_causality': ['dimensional_causality_cpu'+extension]},
 	  classifiers=['TODO'],
 	  license='TODO'
