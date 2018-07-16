@@ -8,10 +8,10 @@ cpu_so_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_cpu
 
 libc = None
 
-if os.path.exists(cpu_dll_path):
-    libc = cdll.LoadLibrary(cpu_dll_path)
-if os.path.exists(cpu_so_path):
+if os.name == "posix":
     libc = cdll.LoadLibrary(cpu_so_path)
+else:
+    libc = cdll.LoadLibrary(cpu_dll_path)
 
 if libc is None:
     raise Exception("Compiled shared library not found! Make sure you installed the package without errors!")
