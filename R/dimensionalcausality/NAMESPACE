@@ -1,2 +1,2 @@
-useDynLib(dimensional_causality_cpu, infer_causality_R)
+useDynLib(dimensional_causality_openmp, infer_causality_R)
 export(infer_causality)

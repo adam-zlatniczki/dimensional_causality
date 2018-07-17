@@ -8,7 +8,7 @@ endif
 
 all:
 	g++ -g -O3 -fPIC -fopenmp -std=c++11 -Iinclude -Ilib/alglib -c lib/alglib/alglibinternal.cpp lib/alglib/alglibmisc.cpp lib/alglib/ap.cpp src/causality.cpp src/dimensions.cpp src/embedding.cpp src/probabilities.cpp src/statistics.cpp src/trimming.cpp
-	g++ -shared -fopenmp -o bin/dimensional_causality_cpu.$(EXT) alglibinternal.o alglibmisc.o ap.o causality.o dimensions.o embedding.o probabilities.o statistics.o trimming.o
+	g++ -shared -fopenmp -o bin/dimensional_causality_openmp.$(EXT) alglibinternal.o alglibmisc.o ap.o causality.o dimensions.o embedding.o probabilities.o statistics.o trimming.o
 	$(RM) *.o
 
 clean:

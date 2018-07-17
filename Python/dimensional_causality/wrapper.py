@@ -3,15 +3,15 @@ from ctypes import cdll, c_double, c_uint, cast, POINTER
 
 
 """ Load OS specific shared library """
-cpu_dll_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_cpu.dll")
-cpu_so_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_cpu.so")
+openmp_dll_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_cpu.dll")
+openmp_so_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_cpu.so")
 
 libc = None
 
 if os.name == "posix":
-    libc = cdll.LoadLibrary(cpu_so_path)
+    libc = cdll.LoadLibrary(openmp_so_path)
 else:
-    libc = cdll.LoadLibrary(cpu_dll_path)
+    libc = cdll.LoadLibrary(openmp_dll_path)
 
 if libc is None:
     raise Exception("Compiled shared library not found! Make sure you installed the package without errors!")
@@ -24,8 +24,6 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     """
     Returns the probability of the possible causal cases in the following order:
         P(X -> Y), P(X <-> Y), P(X <- Y), P(X <- Z -> Y), P(X | Y)
-    This is the implementation of the Dimensional Causality method developed in
-    Benko, Zlatniczki, Fabo, Solyom, Eross, Telcs & Somogyvari (2018) - Inference of causal relations via dimensions.
 
     :param x: The first time series
     :type x: Array-like
@@ -43,6 +41,8 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     :type c: float
     :param bins: Number of bins that the distribution will be split into
     :type bins: float
+    :param downsample_rate: Specifies that every 'downsample_rate'-th point in the embedded manifold must only be kept
+    :type downsample_rate: int
     :return: Final probabilities
     :rtype: list
     """
