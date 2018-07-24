@@ -47,10 +47,10 @@ The method is available in C++, Python, R and MatLab. It is quite fast due to be
     ```
 
 #### 2.1.2 - Installation
-- move to **C++/CPU**
+- move to **C++/OpenMP**
 - On Windows, run `mingw32-make`
 - On Unix, run `make`
-- the built dll/so can be found in the C++/CPU/bin directory
+- the built dll/so can be found in the C++/OpenMP/bin directory
 
 ### 2.2 - Python
 #### 2.2.1 - Prerequisites
