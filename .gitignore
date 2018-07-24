@@ -8,3 +8,8 @@ build
 Python/.idea
 *.egg-info
 *.csv
+C++/CUDA/x64
+C++/CUDA/vc140.pdb
+C++/CUDA/.vs
+C++/CUDA/CUDA.vcxproj.user
+C++/CUDA/CUDA.VC.*
