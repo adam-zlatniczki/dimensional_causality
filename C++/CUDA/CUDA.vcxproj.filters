@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CudaCompile Include="kernel.cu" />
+    <CudaCompile Include="src\embedding.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+    <CudaCompile Include="test\src\test_embedding.cu">
+      <Filter>test\src</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\causality.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{74d7c0f2-de50-49f4-a361-86f442920a39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{e6722356-5178-47c7-b0bd-3a1e56eca532}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lib">
+      <UniqueIdentifier>{ec72a775-ec5c-476c-baa0-20b45078be6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="test">
+      <UniqueIdentifier>{5790a6ce-2d6f-4854-acf6-51ac2fd02be1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="test\src">
+      <UniqueIdentifier>{04f32dad-9ef9-46e0-9f33-dc72a6e2d53f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lib\kNN-CUDA">
+      <UniqueIdentifier>{e9b49dc7-2cf0-4617-a6b8-177f599569b6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\embedding.cuh">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\causality.cuh">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
