@@ -63,7 +63,7 @@ The install process assumes that your Python/R environment was built on the same
   - Run `apt-get install g++`
 
 #### 2.2.2 - Installation
-- move to the **Python** directory
+- move to the **root** directory, where you can find setup.py
 - run `pip install .`
 
 ### 2.3 - R
