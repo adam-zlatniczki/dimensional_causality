@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <stdlib.h>
 #include "embedding.h"
 #include "dimensions.h"
 #include "trimming.h"
