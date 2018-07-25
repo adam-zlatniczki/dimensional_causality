@@ -3,8 +3,8 @@ from ctypes import cdll, c_double, c_uint, cast, POINTER
 
 
 """ Load OS specific shared library """
-openmp_dll_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_cpu.dll")
-openmp_so_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_cpu.so")
+openmp_dll_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_openmp.dll")
+openmp_so_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_openmp.so")
 
 libc = None
 

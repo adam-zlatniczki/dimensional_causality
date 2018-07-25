@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
 import os
+from subprocess import call
 from setuptools.command.install import install
 from wheel.bdist_wheel import bdist_wheel
 from setuptools.command.test import test
 import glob
 from distutils.core import setup
+
 
 extension = ''
 if os.name == 'posix':
@@ -17,10 +19,8 @@ else:
 def compile_OpenMP_library():
     ''' Compile the OpenMP-only version of the source. '''
     print "Compiling and linking shared library..."
-    os.system(
-        'g++ -g -O3 -fPIC -fopenmp -std=c++11 -I../C++/OpenMP/include -I../C++/OpenMP/lib/alglib -c ../C++/OpenMP/lib/alglib/alglibinternal.cpp ../C++/OpenMP/lib/alglib/alglibmisc.cpp ../C++/OpenMP/lib/alglib/ap.cpp ../C++/OpenMP/src/causality.cpp ../C++/OpenMP/src/dimensions.cpp ../C++/OpenMP/src/embedding.cpp ../C++/OpenMP/src/probabilities.cpp ../C++/OpenMP/src/statistics.cpp ../C++/OpenMP/src/trimming.cpp')
-    os.system(
-        'g++ -shared -fopenmp -o dimensional_causality/dimensional_causality_openmp' + extension + ' alglibinternal.o alglibmisc.o ap.o causality.o dimensions.o embedding.o probabilities.o statistics.o trimming.o')
+    call('g++ -g -O3 -fopenmp -m64 -std=c++11 -I../C++/OpenMP/include -I../C++/OpenMP/lib/alglib -c ../C++/OpenMP/lib/alglib/alglibinternal.cpp ../C++/OpenMP/lib/alglib/alglibmisc.cpp ../C++/OpenMP/lib/alglib/ap.cpp ../C++/OpenMP/src/causality.cpp ../C++/OpenMP/src/dimensions.cpp ../C++/OpenMP/src/embedding.cpp ../C++/OpenMP/src/probabilities.cpp ../C++/OpenMP/src/statistics.cpp ../C++/OpenMP/src/trimming.cpp')
+    call('g++ -shared -fopenmp -o dimensional_causality/dimensional_causality_openmp' + extension + ' alglibinternal.o alglibmisc.o ap.o causality.o dimensions.o embedding.o probabilities.o statistics.o trimming.o')
     tmp_files = glob.glob('*.o')
     for file in tmp_files:
         os.remove(file)

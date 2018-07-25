@@ -33,6 +33,8 @@ The method is available in C++, Python, R and MatLab. It is quite fast due to be
 
 ## 2 - Installation
 
+The install process assumes that your Python/R environment was built on the same architecture as your processor. This means that if you have a 64 bit OS but use 32 bit Python or R, then the package won't work. In that case you manually have to modify the install scripts by adding the '-m32' flag to the g++ commands.
+
 ### 2.1 - C++  
 #### 2.1.1 - Prerequisites
 
