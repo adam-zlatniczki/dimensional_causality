@@ -18,17 +18,17 @@ else:
 
 def compile_OpenMP_library():
     ''' Compile the OpenMP-only version of the source. '''
-    print 'Compiling objects...'
+    print('Compiling objects...')
     ret_code = call(['g++', '-g', '-O3', '-fPIC', '-fopenmp', '-std=c++11', '-IC++/OpenMP/include', '-IC++/OpenMP/lib/alglib', '-c', 'C++/OpenMP/lib/alglib/alglibinternal.cpp', 'C++/OpenMP/lib/alglib/alglibmisc.cpp', 'C++/OpenMP/lib/alglib/ap.cpp', 'C++/OpenMP/src/causality.cpp', 'C++/OpenMP/src/dimensions.cpp', 'C++/OpenMP/src/embedding.cpp', 'C++/OpenMP/src/probabilities.cpp', 'C++/OpenMP/src/statistics.cpp', 'C++/OpenMP/src/trimming.cpp'])
-    print 'Creating shared library...'
+    print('Creating shared library...')
     ret_code = call(['g++', '-shared', '-fopenmp', '-o', 'Python/dimensional_causality/dimensional_causality_openmp' + extension, 'alglibinternal.o', 'alglibmisc.o', 'ap.o', 'causality.o', 'dimensions.o', 'embedding.o', 'probabilities.o', 'statistics.o', 'trimming.o'])
-    print 'Removing temporary files'
+    print('Removing temporary files')
     tmp_files = glob.glob('*.o')
     for file in tmp_files:
         os.remove(file)
     if ret_code != 0:
         raise Exception("Compilation failed! Make sure you have g++ installed.")
-	
+
 
 
 class CustomInstall(install):
