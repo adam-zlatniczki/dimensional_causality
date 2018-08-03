@@ -3,6 +3,9 @@
 #include <cmath>
 #include <stdio.h>
 #include <iostream>
+#include <curand_kernel.h>
+#include <thrust/sort.h>
+#include <thrust/execution_policy.h>
 
 using namespace std;
 
@@ -21,6 +24,15 @@ __global__ void joint_embedding_kernel(float* state_space, float* x, float* y, i
 	int j = tid % emb_dim;
 	int time = (a - j) * tau + i;
 	state_space[tid] = x[time] + y[time];
+}
+
+__global__ void shuffled_embedding_kernel(float* state_space, float* state_space_X, float* state_space_Y, int* shuffled_indices, int emb_dim) {
+	int tid = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int i = tid / emb_dim;
+	int j = tid % emb_dim;
+	int shuffled_time = shuffled_indices[i] * emb_dim + j;
+
+	state_space[tid] = state_space_X[tid] + state_space_Y[shuffled_time];
 }
 
 cudaError_t dev_alloc_timeseries(float** dev_x, float** dev_y, int dev_x_size) {
@@ -87,6 +99,38 @@ cudaError_t dev_alloc_manifolds(float** dev_state_space_X, float** dev_state_spa
 	return cudaStatus;
 }
 
+__global__ void init_indices(int* indices) {
+	int tid = (blockIdx.x * blockDim.x) + threadIdx.x;
+	indices[tid] = tid;
+}
+
+cudaError_t random_shuffle(int** indices, int num_blocks, int num_threads_per_block, int n) {
+	// create random shuffle in GPU memory by creating index-rand unif. key pairs and sorting by the keys
+	cudaError_t cudaStatus;
+
+	curandGenerator_t rand_generator_device;
+	curandRngType_t generator_type = CURAND_RNG_PSEUDO_DEFAULT;
+
+	float* rand_unif_keys;
+	cudaStatus = cudaMalloc((void**)&rand_unif_keys, n * sizeof(float));
+	curandCreateGenerator(&rand_generator_device, generator_type);
+	curandGenerateUniform(rand_generator_device, rand_unif_keys, n);
+
+	// initialize indices
+	cudaStatus = cudaMalloc((void**)indices, n * sizeof(int));
+	init_indices<<<num_blocks, num_threads_per_block>>>(*indices);
+	
+	// wait for the kernel to finish
+	cudaStatus = cudaDeviceSynchronize();
+
+	// sort by the random keys
+	thrust::sort_by_key(thrust::device, rand_unif_keys, rand_unif_keys + n, *indices);
+
+Error:
+	cudaFree(rand_unif_keys);
+	return cudaStatus;
+}
+
 cudaError_t embed_manifolds(float** dev_state_space_X,
 	                        float** dev_state_space_Y,
 	                        float** dev_state_space_J,
@@ -129,6 +173,19 @@ cudaError_t embed_manifolds(float** dev_state_space_X,
 	single_embedding_kernel<<<num_blocks, num_threads_per_block>>>(*dev_state_space_Y, dev_y, emb_dim, a, tau);
 	joint_embedding_kernel<<<num_blocks, num_threads_per_block>>>(*dev_state_space_J, dev_x, dev_y, emb_dim, a, tau);
 
+	// wait for the kernels to finish, construction of Z depends on them
+	cudaStatus = cudaDeviceSynchronize();
+	if (cudaStatus != cudaSuccess) {
+		fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching embedding_kernel!\n", cudaStatus);
+	}
+
+	// create random shuffle in GPU memory
+	int* dev_shuffled_indices;
+	cudaStatus = random_shuffle(&dev_shuffled_indices, num_blocks, num_threads_per_block, num_rows);
+
+	// Launch shuffled embedding kernel
+	shuffled_embedding_kernel<<<num_blocks, num_threads_per_block>>>(*dev_state_space_Z, *dev_state_space_X, *dev_state_space_Y, dev_shuffled_indices, emb_dim);
+
 	// Check for any errors launching the kernels
 	cudaStatus = cudaGetLastError();
 	if (cudaStatus != cudaSuccess) {
@@ -142,10 +199,8 @@ cudaError_t embed_manifolds(float** dev_state_space_X,
 		fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching embedding_kernel!\n", cudaStatus);
 	}
 
+	cudaFree(dev_shuffled_indices);
 	cudaFree(dev_x);
 	cudaFree(dev_y);
 	return cudaStatus;
 }
-
-
-
