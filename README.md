@@ -3,17 +3,22 @@
 
 ## Table of Contents
 
-1. Introduction
-2. Installation
+1. Terms and conditions
+3. Introduction
+3. Installation
    1. C++
-   2. Python
+   3. Python
    3. R
    4. MatLab
-3. Examples
-4. TODO
+4. Examples
+5. TODO
 
 
-## 1 - Introduction
+## 1 - Terms and conditions of use
+
+This software is licenced under the GNU AFFERO GENERAL PUBLIC LICENSE Version 3 - for the exact details, please read **licence.txt**. If you use the software you must also cite the original paper.
+
+## 2 - Introduction
 
 Let's assume that we have two systems, X and Y. There can be 5 cases of causality:
 - X causes Y (direct causality, denoted by X -> Y)
@@ -31,12 +36,12 @@ This project contains the implementation of the Dimensional Causality method pro
 The method is available in C++, Python, R and MatLab. It is quite fast due to being implemented in pure C++ with a lot of optimization and parallelization. The Python, R and MatLab versions are equally fast, since they rely on the same C++ code.
 
 
-## 2 - Installation
+## 3 - Installation
 
 The install process assumes that your Python/R environment was built on the same architecture as your processor. This means that if you have a 64 bit OS but use 32 bit Python or R, then the package won't work. In that case you manually have to modify the install scripts by adding the '-m32' flag to the g++ commands.
 
-### 2.1 - C++  
-#### 2.1.1 - Prerequisites
+### 3.1 - C++  
+#### 3.1.1 - Prerequisites
 
 - Windows
   - Install mingw
@@ -48,26 +53,26 @@ The install process assumes that your Python/R environment was built on the same
     apt-get install make
     ```
 
-#### 2.1.2 - Installation
+#### 3.1.2 - Installation
 - move to **C++/OpenMP**
 - On Windows, run `mingw32-make`
 - On Unix, run `make`
 - the built dll/so can be found in the C++/OpenMP/bin directory
 
-### 2.2 - Python
-#### 2.2.1 - Prerequisites
+### 3.2 - Python
+#### 3.3.1 - Prerequisites
 - Windows
   - Install mingw
   - Add its bin directory to your system path
 - Unix
   - Run `apt-get install g++`
 
-#### 2.2.2 - Installation
+#### 3.3.2 - Installation
 - move to the **root** directory, where you can find setup.py
 - run `pip install .`
 
-### 2.3 - R
-#### 2.3.1 - Prerequisites
+### 3.3 - R
+#### 3.3.1 - Prerequisites
 - Windows:
   - Install [rtools](https://cran.r-project.org/bin/windows/Rtools/)
   - Make sure that Rtools\bin and Rtools\mingw_32\bin are added to your system path (you should set this during the Rtools install with a checkbox)
@@ -78,16 +83,16 @@ The install process assumes that your Python/R environment was built on the same
     apt-get install make
     ```
 
-#### 2.3.2 - Installation
+#### 3.3.2 - Installation
 - move to the **R** directory
 - run `R CMD INSTALL dimensionalcausality`
 
 
-## 3 - Examples
+## 4 - Examples
 
-### 3.1 - C++
+### 4.1 - C++
 
-### 3.2 - Python
+### 4.2 - Python
 ```python
 import numpy as np
 import dimensional_causality as dc
@@ -101,7 +106,7 @@ probs = dc.infer_causality(x, y, 4, 1, k_range)
 print probs
 ```
 
-### 3.3 - R
+### 4.3 - R
 ```R
 library(dimensionalcausality)
 
@@ -114,9 +119,9 @@ probs <- infer_causality(x, y, 4, 1, k_range)
 print(probs)
 ```
 
-### 3.4 - MatLab
+### 4.4 - MatLab
 
 
-## 4 - TODO
+## 5 - TODO
 
 The following list contains future directives.
