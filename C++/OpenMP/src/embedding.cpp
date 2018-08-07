@@ -26,7 +26,7 @@ double* embed(double* x, const unsigned int n, const unsigned int emb_dim, const
 double** get_manifolds(double* x, double* y, const unsigned int n, const unsigned int emb_dim, const unsigned int tau, unsigned int downsample_rate){
 	const int c = emb_dim - 1;
 	const int num_rows = n - c * tau;
-	const double a = sqrt(2.0);
+	const double a = sqrt(29.0 / 31.0);
 	
 	double *X, *Y, *J, *Z;
 	
@@ -44,8 +44,7 @@ double** get_manifolds(double* x, double* y, const unsigned int n, const unsigne
 
 			#pragma omp parallel for simd
 			for (int i = 0; i < n; i++) {
-				//j[i] = a*x[i] - y[i];
-				j[i] = x[i] + y[i];
+				j[i] = a*x[i] + y[i];
 			}
 
 			J = embed(j, n, emb_dim, tau);
@@ -71,8 +70,7 @@ double** get_manifolds(double* x, double* y, const unsigned int n, const unsigne
 	#pragma omp parallel for collapse(2)
 	for (int i=0; i<num_rows; i++) {
 		for (int j=0; j<emb_dim; j++) {
-			//Z[i*emb_dim + j] = a * X[ x_s[i]*emb_dim + j ] - Y[ y_s[i]*emb_dim + j ];
-			Z[i*emb_dim + j] = X[ x_s[i]*emb_dim + j ] + Y[ y_s[i]*emb_dim + j ];
+			Z[i*emb_dim + j] = a * X[ x_s[i]*emb_dim + j ] + Y[ y_s[i]*emb_dim + j ];
 		}
 	}
 	
