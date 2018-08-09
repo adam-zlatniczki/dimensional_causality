@@ -57,7 +57,7 @@ class CustomTest(test):
 setup(name='Dimensional Causality',
       version='1.0',
       description='Python version of the Dimensional Causality method',
-      long_description='Python version of the Dimensional Causality method developed in Benko, Zlatniczki, Fabo, Solyom, Eross, Telcs & Somogyvari (2018) - Inference of causal relations via dimensions.',
+      long_description='Python version of the Dimensional Causality method developed in Benko, Zlatniczki, Fabo, Solyom, Eross, Telcs & Somogyvari (2018) - Exact Inference of Causal Relation in Dynamical Systems.',
       author='Adam Zlatniczki',
       author_email='adam.zlatniczki@cs.bme.hu',
       url='https://github.com/adam-zlatniczki/dimensional_causality',

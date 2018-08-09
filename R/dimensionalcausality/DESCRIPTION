@@ -3,7 +3,7 @@ Version: 1.0
 Date: 2018-07-16
 Title: Dimensional Causality
 Authors@R: c(person("Adam", "Zlatniczki", role = c("aut", "cre"), email = "adam.zlatniczki@cs.bme.hu"))
-Description: R version of the Dimensional Causality method developed in Benko, Zlatniczki, Fabo, Solyom, Eross, Telcs & Somogyvari (2018) - Inference of causal relations via dimensions.
+Description: R version of the Dimensional Causality method developed in Benko, Zlatniczki, Fabo, Solyom, Eross, Telcs & Somogyvari (2018) - Exact Inference of Causal Relation in Dynamical Systems.
 License: GPL (>= 2)
 URL: https://github.com/adam-zlatniczki/dimensional_causality
 NeedsCompilation: yes
