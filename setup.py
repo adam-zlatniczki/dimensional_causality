@@ -71,6 +71,20 @@ setup(name='Dimensional Causality',
       package_data={'dimensional_causality': ['dimensional_causality_openmp' + extension]},
       test_suite='nose.collector',
       tests_require=['nose'],
-      classifiers=['TODO'],
-      license='TODO'
+      classifiers=[
+	      'Development Status :: 4 - Beta',
+	      'Environment :: Console',
+		  'Intended Audience :: Science/Research',
+		  'Intended Audience :: End Users/Desktop',
+		  'License :: OSI Approved :: GNU Affero General Public License v3',
+		  'Natural Language :: English',
+		  'Operating System :: Microsoft :: Windows',
+		  'Operating System :: POSIX',
+		  'Topic :: Scientific/Engineering',
+		  'Topic :: Scientific/Engineering :: Artificial Intelligence',
+		  'Topic :: Scientific/Engineering :: Information Analysis',
+		  'Topic :: Scientific/Engineering :: Mathematics',
+		  #'Topic :: Scientific/Engineering :: Visualization'
+	  ],
+      license='AGPL-v3'
       )
