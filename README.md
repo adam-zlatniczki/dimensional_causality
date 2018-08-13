@@ -39,6 +39,8 @@ The method is available in C++, Python, R and MatLab. It is quite fast due to be
 ## 3 - Installation
 
 The install process assumes that your Python/R environment was built on the same architecture as your processor. This means that if you have a 64 bit OS but use 32 bit Python or R, then the package won't work. In that case you manually have to modify the install scripts by adding the '-m32' flag to the g++ commands.
+Typical installation time depends on your machine, but in general, a few minutes should be sufficient.
+The installation process was tested with GNU g++ 7.2.0, PIP 18.0, Rtools 3.4.0.1964.
 
 ### 3.1 - C++  
 #### 3.1.1 - Prerequisites
@@ -89,6 +91,8 @@ The install process assumes that your Python/R environment was built on the same
 
 
 ## 4 - Examples
+
+In this example we generate two random, independent uniform time-series and check their causal relation. We expect the final probabilities to be [0.026, 0.069, 0.016, 0.118, 0.771] (very slight differences are acceptable, since the time-permuted manifold Z is constructed randomly). Running the demo should take a couple of seconds only.
 
 ### 4.1 - C++
 
