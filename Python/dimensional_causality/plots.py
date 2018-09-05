@@ -163,6 +163,17 @@ def add_to_axis_probabilities(ax, final_probabilities, title=None, custom_labels
 
     colors = [COLOR_X_CAUSES_Y, COLOR_CIRCULAR_CAUSE, COLOR_Y_CAUSES_X, COLOR_COMMON_CAUSE, COLOR_INDEPENDENCE]
 
+    # round probabilities to 2 decimals in a way that they still sum to 1
+    rounded_probabilities = np.round(final_probabilities, 2)
+    final_probabilities = []
+    tmp = np.sum(rounded_probabilities[:-1])
+    for i in range(len(rounded_probabilities)):
+        if i < len(rounded_probabilities) - 1:
+            final_probabilities.append(rounded_probabilities[i])
+        else:
+            final_probabilities.append(np.round(1 - tmp, 2))
+
+    # draw to axis
     probability_labels = [str(p)[:4] for p in final_probabilities]
 
     ax.bar(ticks, final_probabilities, bar_width, color=colors)
