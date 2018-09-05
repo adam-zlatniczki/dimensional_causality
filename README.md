@@ -106,7 +106,7 @@ x = np.random.rand(10000)
 y = np.random.rand(10000)
 k_range = range(10, 40, 2)
 
-probs = dc.infer_causality(x, y, 4, 1, k_range)
+probs, dims, stdevs = dc.infer_causality(x, y, 4, 1, k_range)
 print probs
 ```
 
