@@ -510,7 +510,7 @@ int test_infer_causality(){
 	double* x = new double[10000];
 	double* y = new double[10000];
 	
-	//srand(0);
+	srand(0);
 	for (int i=0; i<10000; i++) {
 		x[i] = rand();
 		y[i] = rand();
@@ -528,6 +528,41 @@ int test_infer_causality(){
 	cout << "P(X cc Y) = " << probs[3] << endl;
 	cout << "P(X | Y) = " << probs[4] << endl;
 	
+	delete[] probs;
+	delete[] k_range;
+	
+	return 0;
+}
+
+int test_infer_causality_export(){
+	double* x = new double[10000];
+	double* y = new double[10000];
+	
+	srand(0);
+	for (int i=0; i<10000; i++) {
+		x[i] = rand();
+		y[i] = rand();
+	}
+	
+	unsigned int* k_range = new unsigned int[10]{4, 8, 12, 16, 20, 24, 28, 32, 36, 40};
+	
+	double* exported_dims = NULL;
+	double* exported_stdevs = NULL;
+	
+	double* probs = infer_causality(x, y, 10000, 4, 1, k_range, 10, 0.05, 3.0, 40.0, 2, &exported_dims, &exported_stdevs);
+	
+	cout << "Exported dimensions:" << endl;
+	for (int i=0; i<10; i++) {
+		cout << exported_dims[i*4 + 0] << ", " << exported_dims[i*4 + 1] << ", " << exported_dims[i*4 + 2] << ", " << exported_dims[i*4 + 3] << endl;
+	}
+	
+	cout << "Exported stdevs:" << endl;
+	for (int i=0; i<10; i++) {
+		cout << exported_stdevs[i*4 + 0] << ", " << exported_stdevs[i*4 + 1] << ", " << exported_stdevs[i*4 + 2] << ", " << exported_stdevs[i*4 + 3] << endl;
+	}
+	
+	delete[] exported_dims;
+	delete[] exported_stdevs;
 	delete[] probs;
 	delete[] k_range;
 	
@@ -562,8 +597,8 @@ int main(){
 	cout << "Test Gauss set failed: " << test_gauss_set() << endl;
 	cout << "Test Gauss pdf failed: " << test_gauss_pdf() << endl;
 	
-	cout << "Smoke test inferring causality " << test_infer_causality() << endl;
-	
+	cout << "Smoke test inferring causality \n" << test_infer_causality() << endl;
+	cout << "Smoke test data export \n" << test_infer_causality_export() << endl;
 	
 	
 	

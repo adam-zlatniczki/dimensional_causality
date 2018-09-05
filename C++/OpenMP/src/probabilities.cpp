@@ -1780,8 +1780,9 @@ double prob_A33(double* expv, double* cov_m, double min_x, double max_x, double 
     return  likelihood;
 }
 
-double* get_probabilities(double** dims, unsigned int n, double eff_sample_size, double c=3.0, double bins=20.0){
-	double* expv = new double[4];
+void fit_gauss(double** dims, unsigned int n, double eff_sample_size, double** expv_p, double** cov_m_p){
+	*expv_p = new double[4];
+	double* expv = *expv_p;
 	
 	#pragma omp parallel sections
 	{
@@ -1798,9 +1799,13 @@ double* get_probabilities(double** dims, unsigned int n, double eff_sample_size,
 		expv[3] = exp_val(dims[3], n);
 	}
 	
-	double* cov_m = cov_matr(dims, expv, n);
+	*cov_m_p = cov_matr(dims, expv, n);
+	double* cov_m = *cov_m_p;
 	
 	for (int i=0; i<16; i++) cov_m[i] *= eff_sample_size / n;
+}
+
+double* get_probabilities(double* expv, double* cov_m, double c=3.0, double bins=20.0){
 	
 	double min_x = max( expv[0] - c * sqrt(cov_m[0]) , 0.0);
 	double max_x = expv[0] + c * sqrt(cov_m[0]);

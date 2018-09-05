@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <cmath>
 #include "causality.h"
 #include "embedding.h"
 #include "dimensions.h"
@@ -9,7 +10,7 @@
 using namespace std;
 
 
-double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_dim, unsigned int tau, unsigned int* k_range, unsigned int len_range, double eps/*=0.05*/, double c/*=3.0*/, double bins/*=20.0*/, unsigned int downsample_rate/*=1*/){
+double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_dim, unsigned int tau, unsigned int* k_range, unsigned int len_range, double eps/*=0.05*/, double c/*=3.0*/, double bins/*=20.0*/, unsigned int downsample_rate/*=1*/, double** export_dims_p/*=NULL*/, double** export_stdevs_p/*=NULL*/){
 	// embed manifolds
 	double** manifolds = get_manifolds(x, y, n, emb_dim, tau, downsample_rate);
 	double* X = manifolds[0];
@@ -29,10 +30,22 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	
 	double** range_probabilities = new double*[len_range];
 	
+	// set up data export
+	double* export_dims = NULL;
+	double* export_stdevs = NULL;
+
+	if (export_dims_p != NULL){
+		*export_dims_p = new double[len_range*4];
+		export_dims = *export_dims_p;
+	}
+	if (export_stdevs_p != NULL){
+		*export_stdevs_p = new double[len_range*4];
+		export_stdevs = *export_stdevs_p;
+	}
+	
 	// explore k-range
 	unsigned int k;
 	unsigned int trimmed_size;
-	
 	
 	for (int i=0; i<len_range; i++) {
 		k = k_range[i];
@@ -47,7 +60,15 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 		
 		// calculate case probabilities
 		double eff_sample_size = 2 * k;
-		range_probabilities[i] = get_probabilities(trimmed_data, trimmed_size, eff_sample_size);
+		double* expv = NULL;
+		double* cov_m = NULL;
+		
+		fit_gauss(trimmed_data, trimmed_size, eff_sample_size, &expv, &cov_m);
+		range_probabilities[i] = get_probabilities(expv, cov_m, c, bins);
+		
+		// export data
+		if (export_dims != NULL) for (int j=0; j<4; j++) export_dims[i*4 + j] = expv[j];
+		if (export_stdevs != NULL) for (int j=0; j<4; j++) export_stdevs[i*4 + j] = sqrt(cov_m[j*5]);
 		
 		// clear trimmed data
 		for (int j=0; j<4; j++) delete[] trimmed_data[j];
