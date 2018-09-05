@@ -18,6 +18,10 @@ class TestPlots(unittest.TestCase):
         dc.plot_k_range_dimensions(k_range, exported_dims, exported_stdevs)
         self.assertEqual(True, True)
 
+    def test_plot_probabilities(self):
+        final_probabilities = [0.15, 0.05, 0.15, 0.1, 0.55]
+        dc.plot_probabilities(final_probabilities)
+        self.assertEqual(True, True)
 
 if __name__ == '__main__':
     unittest.main()

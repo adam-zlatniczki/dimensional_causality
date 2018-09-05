@@ -1,6 +1,7 @@
 from matplotlib import pyplot as plt
 from constants import *
 import numpy as np
+from matplotlib import interactive
 
 
 def _set_axis_xticks(ax, xvals):
@@ -97,7 +98,7 @@ def add_to_axis_k_range_dimensions(ax, k_range, exported_dims, exported_stdevs, 
 
 
 def plot_k_range_dimensions(k_range, exported_dims, exported_stdevs, show_std=1.0, title=None, x_label=None,
-                       show_legend=True, matplotlib_rc=None):
+                       show_legend=True, matplotlib_rc=None, interactive_window=True):
     r"""For each value in the explored range the function plots the mean dimension of each manifold and shows the
     standard deviations (multiplied by *show_std*).
 
@@ -117,9 +118,87 @@ def plot_k_range_dimensions(k_range, exported_dims, exported_stdevs, show_std=1.
         :type show_legend: bool
         :param matplotlib_rc: A matplotlib style configuration dictionary
         :type matplotlib_rc: dict
+        :param interactive_window: whether the plot should open in an interactive window
+        :type interactive_window: bool
         :return: None
         """
+    interactive(interactive_window)
     fig, ax = plt.subplots()
     add_to_axis_k_range_dimensions(ax, k_range, exported_dims, exported_stdevs, show_std, title, x_label,
                        show_legend, matplotlib_rc)
-    plt.show(block=True)
+
+
+def add_to_axis_probabilities(ax, final_probabilities, title=None, custom_labels=None, matplotlib_rc=None):
+    """
+    Plots the probabilities in a bar chart onto the given axis.
+
+    :param ax: axis object to be drawn upon
+    :type ax: matplotlib.axes._subplots.AxesSubplot
+    :param final_probabilities: list of the 5 case probabilities
+    :type final_probabilities: list
+    :param title: the title of the plot
+    :type title: str
+    :param custom_labels: custom labels under the bars
+    :type custom_labels: list of str
+    :param matplotlib_rc: a matplotlib style configuration dictionary
+    :type matplotlib_rc: dict
+    :return: None
+    """
+    # set figure parameters
+    if matplotlib_rc is not None:
+        plt.rcParams.update(matplotlib_rc)
+
+    # plot probabilities as a bar chart
+    bar_width = 0.1
+    space = 0.05
+
+    ticks = [i * (bar_width + space) for i in range(len(final_probabilities))]
+    if custom_labels is None:
+        labels = [LABEL_X_CAUSES_Y, LABEL_CIRCULAR_CAUSE, LABEL_Y_CAUSES_X, LABEL_COMMON_CAUSE, LABEL_INDEPENDENCE]
+    else:
+        labels = custom_labels
+
+    colors = [COLOR_X_CAUSES_Y, COLOR_CIRCULAR_CAUSE, COLOR_Y_CAUSES_X, COLOR_COMMON_CAUSE, COLOR_INDEPENDENCE]
+
+    probability_labels = [str(p)[:4] for p in final_probabilities]
+
+    ax.bar(ticks, final_probabilities, bar_width, color=colors)
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(labels)
+    ax.set_ylim([0, 1.12])
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    tick_locations = ax.xaxis.get_ticklocs()
+    for i in range(len(probability_labels)):
+        ax.text(tick_locations[i],
+                final_probabilities[i] + 0.05,
+                probability_labels[i],
+                horizontalalignment='center')
+
+    if title is not None:
+        ax.set_title(title)
+
+
+def plot_probabilities(final_probabilities, title=None, custom_labels=None, matplotlib_rc=None, interactive_window=True):
+    """
+        Plots the probabilities in a bar chart.
+
+        :param ax: axis object to be drawn upon
+        :type ax: matplotlib.axes._subplots.AxesSubplot
+        :param final_probabilities: list of the 5 case probabilities
+        :type final_probabilities: list
+        :param title: the title of the plot
+        :type title: str
+        :param custom_labels: custom labels under the bars
+        :type custom_labels: list of str
+        :param matplotlib_rc: a matplotlib style configuration dictionary
+        :type matplotlib_rc: dict
+        :param interactive_window: whether the plot should open in an interactive window
+        :type interactive_window: bool
+        :return: None
+        """
+    interactive(interactive_window)
+    fig, ax = plt.subplots()
+    add_to_axis_probabilities(ax, final_probabilities, title, custom_labels, matplotlib_rc)
