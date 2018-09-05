@@ -1,5 +1,6 @@
 import os
 from ctypes import cdll, c_double, c_uint, cast, POINTER, pointer
+from plots import plot_k_range_dimensions, plot_probabilities
 
 
 """ Load OS specific shared library """
@@ -21,7 +22,7 @@ libc.infer_causality.restype = POINTER(c_double)
 """ Load library End """
 
 
-def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, downsample_rate=1, export_data=False):
+def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, downsample_rate=1, export_data=False, plot=True):
     """
     Returns a tuple. The first element is a list with the probability of the possible causal cases in the following order:
         P(X -> Y), P(X <-> Y), P(X <- Y), P(X <- Z -> Y), P(X | Y)
@@ -48,9 +49,13 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     :type bins: float
     :param downsample_rate: Specifies that every 'downsample_rate'-th point in the embedded manifold must only be kept
     :type downsample_rate: int
+    :param plot: indicates whether plots should be drawn
+    :type plot: bool
     :return: (case probabilities, exported dimension estimates, exported standard deviations for dimension estimates)
     :rtype: tuple of lists
     """
+    export_data = export_data or plot
+
     x_arr = (c_double * len(x))()
     y_arr = (c_double * len(x))()
 
@@ -105,4 +110,10 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
         export_dims = None
         export_stdevs = None
 
-    return [probs[i] for i in range(5)], export_dims, export_stdevs
+    final_probabilities = [probs[i] for i in range(5)]
+
+    if plot:
+        plot_k_range_dimensions(k_range, export_dims, export_stdevs)
+        plot_probabilities(final_probabilities)
+
+    return final_probabilities, export_dims, export_stdevs

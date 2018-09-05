@@ -10,7 +10,7 @@ class TestWrapper(unittest.TestCase):
         y = np.random.rand(10000)
         k_range = range(4,44, 1)
 
-        probs = dc.infer_causality(x, y, 4, 1, k_range, 0.05, 3.0, 20.0, 4)
+        probs = dc.infer_causality(x, y, 4, 1, k_range, 0.05, 3.0, 20.0, 4, False, False)
         print probs
 
         self.assertEqual(True, True)

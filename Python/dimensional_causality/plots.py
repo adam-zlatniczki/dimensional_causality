@@ -98,7 +98,7 @@ def add_to_axis_k_range_dimensions(ax, k_range, exported_dims, exported_stdevs, 
 
 
 def plot_k_range_dimensions(k_range, exported_dims, exported_stdevs, show_std=1.0, title=None, x_label=None,
-                       show_legend=True, matplotlib_rc=None, interactive_window=True):
+                       show_legend=True, matplotlib_rc=None, interactive_window=True, blocking=True):
     r"""For each value in the explored range the function plots the mean dimension of each manifold and shows the
     standard deviations (multiplied by *show_std*).
 
@@ -120,12 +120,15 @@ def plot_k_range_dimensions(k_range, exported_dims, exported_stdevs, show_std=1.
         :type matplotlib_rc: dict
         :param interactive_window: whether the plot should open in an interactive window
         :type interactive_window: bool
+        :param blocking: indicates whether the plotting should hold execution or not
+        :type blocking: bool
         :return: None
         """
     interactive(interactive_window)
     fig, ax = plt.subplots()
     add_to_axis_k_range_dimensions(ax, k_range, exported_dims, exported_stdevs, show_std, title, x_label,
                        show_legend, matplotlib_rc)
+    plt.show(block=blocking)
 
 
 def add_to_axis_probabilities(ax, final_probabilities, title=None, custom_labels=None, matplotlib_rc=None):
@@ -181,7 +184,7 @@ def add_to_axis_probabilities(ax, final_probabilities, title=None, custom_labels
         ax.set_title(title)
 
 
-def plot_probabilities(final_probabilities, title=None, custom_labels=None, matplotlib_rc=None, interactive_window=True):
+def plot_probabilities(final_probabilities, title=None, custom_labels=None, matplotlib_rc=None, interactive_window=True, blocking=True):
     """
         Plots the probabilities in a bar chart.
 
@@ -197,8 +200,11 @@ def plot_probabilities(final_probabilities, title=None, custom_labels=None, matp
         :type matplotlib_rc: dict
         :param interactive_window: whether the plot should open in an interactive window
         :type interactive_window: bool
+        :param blocking: indicates whether the plotting should hold execution or not
+        :type blocking: bool
         :return: None
         """
     interactive(interactive_window)
     fig, ax = plt.subplots()
     add_to_axis_probabilities(ax, final_probabilities, title, custom_labels, matplotlib_rc)
+    plt.show(block=blocking)
