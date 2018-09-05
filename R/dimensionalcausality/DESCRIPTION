@@ -10,3 +10,4 @@ NeedsCompilation: yes
 Classification/ACM: G.3, G.4, H.1.1
 Classification/JEL: C11, C13, C14, C32
 Classification/MSC: 28A80, 37F05, 62C12, 62H20, 94A17
+Imports: ggplot2

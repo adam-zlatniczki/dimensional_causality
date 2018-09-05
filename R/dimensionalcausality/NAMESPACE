@@ -1,2 +1,3 @@
 useDynLib(dimensional_causality_openmp, infer_causality_R)
 export(infer_causality)
+import(ggplot2)

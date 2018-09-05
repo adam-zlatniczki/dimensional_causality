@@ -49,6 +49,14 @@ infer_causality <- function(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=2
             as.integer(downsample_rate)
         )
     }
-  
+    
+    if (plot) {
+        p <- plot_k_range_dimensions(k_range, dims, stdevs)
+        print(p)
+      
+        bp <- plot_probabilities(ret$probs)
+        print(bp)
+    }
+    
     return(list("probs" = ret$probs, "dims" = dims, "stdevs" = stdevs))
 }
