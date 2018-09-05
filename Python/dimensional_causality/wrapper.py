@@ -1,5 +1,5 @@
 import os
-from ctypes import cdll, c_double, c_uint, cast, POINTER
+from ctypes import cdll, c_double, c_uint, cast, POINTER, pointer
 
 
 """ Load OS specific shared library """
@@ -16,14 +16,19 @@ else:
 if libc is None:
     raise Exception("Compiled shared library not found! Make sure you installed the package without errors!")
 
+libc.infer_causality.argtypes = [POINTER(c_double), POINTER(c_double), c_uint, c_uint, c_uint, POINTER(c_uint), c_uint, c_double, c_double, c_double, c_uint, POINTER(POINTER(c_double)), POINTER(POINTER(c_double))]
 libc.infer_causality.restype = POINTER(c_double)
 """ Load library End """
 
 
-def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, downsample_rate=1):
+def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, downsample_rate=1, export_data=False):
     """
-    Returns the probability of the possible causal cases in the following order:
+    Returns a tuple. The first element is a list with the probability of the possible causal cases in the following order:
         P(X -> Y), P(X <-> Y), P(X <- Y), P(X <- Z -> Y), P(X | Y)
+    The second element is a 2D list containing the dimensions estimates of each manifold for each k in the k_range.
+    The third element is a 2D list containing the standard deviations of the dimensions estimates of each manifold for
+    each k in the k_range.
+    The 2D lists come with dimension (len(k_range) x 4).
 
     :param x: The first time series
     :type x: Array-like
@@ -43,8 +48,8 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     :type bins: float
     :param downsample_rate: Specifies that every 'downsample_rate'-th point in the embedded manifold must only be kept
     :type downsample_rate: int
-    :return: Final probabilities
-    :rtype: list
+    :return: (case probabilities, exported dimension estimates, exported standard deviations for dimension estimates)
+    :rtype: tuple of lists
     """
     x_arr = (c_double * len(x))()
     y_arr = (c_double * len(x))()
@@ -68,6 +73,12 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     bins = c_double(bins)
     downsample_rate = c_uint(downsample_rate)
 
+    export_dims = POINTER(c_double)() # create null pointer
+    export_stdevs = POINTER(c_double)()
+    if export_data:
+        export_dims = pointer(export_dims) # convert to pointer of pointer
+        export_stdevs = pointer(export_stdevs)
+
     probs = libc.infer_causality(
         cast(x_arr, POINTER(c_double)),
         cast(y_arr, POINTER(c_double)),
@@ -79,7 +90,19 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
         eps,
         c,
         bins,
-        downsample_rate
+        downsample_rate,
+        export_dims,
+        export_stdevs
     )
 
-    return [probs[i] for i in range(5)]
+    if export_data:
+        export_dims = [[export_dims[0][i*4+j] for j in range(4)] for i in range(len(k_range))]
+
+    if export_data:
+        export_stdevs = [[export_stdevs[0][i * 4 + j] for j in range(4)] for i in range(len(k_range))]
+
+    if not export_data:
+        export_dims = None
+        export_stdevs = None
+
+    return [probs[i] for i in range(5)], export_dims, export_stdevs
