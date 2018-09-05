@@ -30,6 +30,7 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     The third element is a 2D list containing the standard deviations of the dimensions estimates of each manifold for
     each k in the k_range.
     The 2D lists come with dimension (len(k_range) x 4).
+    **Note that if you set plot=True, then you must have LaTeX installed.**
 
     :param x: The first time series
     :type x: Array-like
