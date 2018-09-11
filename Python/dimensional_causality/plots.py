@@ -131,7 +131,7 @@ def plot_k_range_dimensions(k_range, exported_dims, exported_stdevs, show_std=1.
     plt.show(block=blocking)
 
 
-def add_to_axis_probabilities(ax, final_probabilities, title=None, custom_labels=None, matplotlib_rc=None):
+def add_to_axis_probabilities(ax, final_probabilities, title=None, use_latex=False, custom_labels=None, matplotlib_rc=None):
     """
     Plots the probabilities in a bar chart onto the given axis.
 
@@ -141,6 +141,8 @@ def add_to_axis_probabilities(ax, final_probabilities, title=None, custom_labels
     :type final_probabilities: list
     :param title: the title of the plot
     :type title: str
+    :param use_latex: whether pretty labels should be used or not (requires LaTeX installed and available in path)
+    :type use_latex: bool
     :param custom_labels: custom labels under the bars
     :type custom_labels: list of str
     :param matplotlib_rc: a matplotlib style configuration dictionary
@@ -151,13 +153,22 @@ def add_to_axis_probabilities(ax, final_probabilities, title=None, custom_labels
     if matplotlib_rc is not None:
         plt.rcParams.update(matplotlib_rc)
 
+    if use_latex:
+        matplotlib.rc('text', usetex=True)
+        matplotlib.rcParams.update(LATEX_SETTINGS)
+
     # plot probabilities as a bar chart
     bar_width = 0.1
     space = 0.05
 
     ticks = [i * (bar_width + space) for i in range(len(final_probabilities))]
+    labels = None
+
     if custom_labels is None:
-        labels = [LABEL_X_CAUSES_Y, LABEL_CIRCULAR_CAUSE, LABEL_Y_CAUSES_X, LABEL_COMMON_CAUSE, LABEL_INDEPENDENCE]
+        if use_latex:
+            labels = [LABEL_X_CAUSES_Y_LATEX, LABEL_CIRCULAR_CAUSE_LATEX, LABEL_Y_CAUSES_X_LATEX, LABEL_COMMON_CAUSE_LATEX, LABEL_INDEPENDENCE_LATEX]
+        else:
+            labels = [LABEL_X_CAUSES_Y, LABEL_CIRCULAR_CAUSE, LABEL_Y_CAUSES_X, LABEL_COMMON_CAUSE, LABEL_INDEPENDENCE]
     else:
         labels = custom_labels
 
@@ -195,7 +206,7 @@ def add_to_axis_probabilities(ax, final_probabilities, title=None, custom_labels
         ax.set_title(title)
 
 
-def plot_probabilities(final_probabilities, title=None, custom_labels=None, matplotlib_rc=None, interactive_window=True, blocking=True):
+def plot_probabilities(final_probabilities, title=None, use_latex=False, custom_labels=None, matplotlib_rc=None, interactive_window=True, blocking=True):
     """
         Plots the probabilities in a bar chart.
 
@@ -205,6 +216,8 @@ def plot_probabilities(final_probabilities, title=None, custom_labels=None, matp
         :type final_probabilities: list
         :param title: the title of the plot
         :type title: str
+        :param use_latex: whether pretty labels should be used or not (requires LaTeX installed and available in path)
+        :type use_latex: bool
         :param custom_labels: custom labels under the bars
         :type custom_labels: list of str
         :param matplotlib_rc: a matplotlib style configuration dictionary
@@ -217,5 +230,5 @@ def plot_probabilities(final_probabilities, title=None, custom_labels=None, matp
         """
     interactive(interactive_window)
     fig, ax = plt.subplots()
-    add_to_axis_probabilities(ax, final_probabilities, title, custom_labels, matplotlib_rc)
+    add_to_axis_probabilities(ax, final_probabilities, title, use_latex, custom_labels, matplotlib_rc)
     plt.show(block=blocking)

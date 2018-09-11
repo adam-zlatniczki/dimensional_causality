@@ -22,7 +22,7 @@ libc.infer_causality.restype = POINTER(c_double)
 """ Load library End """
 
 
-def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, downsample_rate=1, export_data=False, plot=True):
+def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, downsample_rate=1, export_data=False, plot=True, use_latex=False):
     """
     Returns a tuple. The first element is a list with the probability of the possible causal cases in the following order:
         P(X -> Y), P(X <-> Y), P(X <- Y), P(X <- Z -> Y), P(X | Y)
@@ -30,7 +30,7 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     The third element is a 2D list containing the standard deviations of the dimensions estimates of each manifold for
     each k in the k_range.
     The 2D lists come with dimension (len(k_range) x 4).
-    **Note that if you set plot=True, then you must have LaTeX installed.**
+    **Note that if you set use_latex=True, then you must have LaTeX installed.**
 
     :param x: The first time series
     :type x: Array-like
@@ -52,6 +52,8 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     :type downsample_rate: int
     :param plot: indicates whether plots should be drawn
     :type plot: bool
+    :param use_latex: whether pretty labels should be used in plots or not (requires LaTeX installed and available in system path)
+    :type use_latex: bool
     :return: (case probabilities, exported dimension estimates, exported standard deviations for dimension estimates)
     :rtype: tuple of lists
     """
@@ -115,6 +117,6 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
 
     if plot:
         plot_k_range_dimensions(k_range, export_dims, export_stdevs)
-        plot_probabilities(final_probabilities)
+        plot_probabilities(final_probabilities, use_latex=use_latex)
 
     return final_probabilities, export_dims, export_stdevs

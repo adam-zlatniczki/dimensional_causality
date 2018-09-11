@@ -9,8 +9,6 @@ LATEX_SETTINGS = {
         r'\usepackage{stmaryrd}'
     ]
 }
-matplotlib.rc('text', usetex=True)
-matplotlib.rcParams.update(LATEX_SETTINGS)
 
 """ Manifold related constants"""
 # Colors
@@ -34,11 +32,17 @@ COLOR_COMMON_CAUSE = "#f075ae"  # "#EB4291"
 COLOR_INDEPENDENCE = "gold"
 
 # Labels
-LABEL_X_CAUSES_Y = r"$ \rightarrow $"
-LABEL_CIRCULAR_CAUSE = r"$ \leftrightarrow $"
-LABEL_Y_CAUSES_X = r"$ \leftarrow $"
-LABEL_COMMON_CAUSE = r"$ \curlyveeuparrow $"
-LABEL_INDEPENDENCE = r"$ \bot $"
+LABEL_X_CAUSES_Y = "X -> Y"
+LABEL_CIRCULAR_CAUSE = "X <-> Y"
+LABEL_Y_CAUSES_X = "X <- Y"
+LABEL_COMMON_CAUSE = "X cc Y"
+LABEL_INDEPENDENCE = "X | Y"
+
+LABEL_X_CAUSES_Y_LATEX = r"$ \rightarrow $"
+LABEL_CIRCULAR_CAUSE_LATEX = r"$ \leftrightarrow $"
+LABEL_Y_CAUSES_X_LATEX = r"$ \leftarrow $"
+LABEL_COMMON_CAUSE_LATEX = r"$ \curlyveeuparrow $"
+LABEL_INDEPENDENCE_LATEX = r"$ \bot $"
 
 # axis settings
 NUM_TICKS = 5  # number of ticks on the x axis
