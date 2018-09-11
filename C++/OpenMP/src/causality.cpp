@@ -23,12 +23,25 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	if (downsample_rate > 1) n = n / downsample_rate;
 	
 	// calculate kNN distances for the whole k-range
-	double** X_nn_distances = knn_distances(X, n, emb_dim, k_range[len_range-1]);
-	double** Y_nn_distances = knn_distances(Y, n, emb_dim, k_range[len_range-1]);
-	double** J_nn_distances = knn_distances(J, n, emb_dim, k_range[len_range-1]);
-	double** Z_nn_distances = knn_distances(Z, n, emb_dim, k_range[len_range-1]);
-	
-	double** range_probabilities = new double*[len_range];
+    double** X_nn_distances = NULL;
+    double** Y_nn_distances = NULL;
+    double** J_nn_distances = NULL;
+    double** Z_nn_distances = NULL;
+    
+    #pragma omp parallel sections
+    {
+        #pragma omp section
+        X_nn_distances = knn_distances(X, n, emb_dim, k_range[len_range-1]);
+        
+        #pragma omp section
+        Y_nn_distances = knn_distances(Y, n, emb_dim, k_range[len_range-1]);
+        
+        #pragma omp section
+        J_nn_distances = knn_distances(J, n, emb_dim, k_range[len_range-1]);
+        
+        #pragma omp section
+        Z_nn_distances = knn_distances(Z, n, emb_dim, k_range[len_range-1]);
+    }
 	
 	// set up data export
 	double* export_dims = NULL;
@@ -46,14 +59,30 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	// explore k-range
 	unsigned int k;
 	unsigned int trimmed_size;
+    double** range_probabilities = new double*[len_range];
 	
 	for (int i=0; i<len_range; i++) {
 		k = k_range[i];
 		// estimate local dimensions
-		double* x_dims = local_dims(X_nn_distances, n, k);
-		double* y_dims = local_dims(Y_nn_distances, n, k);
-		double* j_dims = local_dims(J_nn_distances, n, k);
-		double* z_dims = local_dims(Z_nn_distances, n, k);
+        double* x_dims = NULL;
+        double* y_dims = NULL;
+        double* j_dims = NULL;
+        double* z_dims = NULL;
+        
+        #pragma omp parallel sections
+        {
+            #pragma omp section
+            x_dims = local_dims(X_nn_distances, n, k);
+            
+            #pragma omp section
+            y_dims = local_dims(Y_nn_distances, n, k);
+            
+            #pragma omp section
+            j_dims = local_dims(J_nn_distances, n, k);
+            
+            #pragma omp section
+            z_dims = local_dims(Z_nn_distances, n, k);
+        }
 		
 		// trim dimension estimates
 		double** trimmed_data = trim_data(x_dims, y_dims, j_dims, z_dims, n, trimmed_size, eps);
