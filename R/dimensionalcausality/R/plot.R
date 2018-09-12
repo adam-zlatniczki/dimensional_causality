@@ -1,7 +1,7 @@
 plot_probabilities <- function(final_probabilities){
   final_probabilities <- round(final_probabilities, 2)
   final_probabilities[5] <- 1 - sum(final_probabilities[1:4])
-  df <- data.frame(case=c("->", "<->", "<-", "cc", "|"), probability=final_probabilities)
+  df <- data.frame(case=c("X -> Y", "X <-> Y", "X <- Y", "X cc Y", "X | Y"), probability=final_probabilities)
   df$case <- factor(df$case, levels = df$case)
   
   bp <- ggplot(data=df, aes(x=case, y=probability, fill=case)) + 
