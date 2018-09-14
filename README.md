@@ -9,7 +9,6 @@
    1. C++
    3. Python
    3. R
-   4. MatLab
 4. Examples
 5. TODO
 
@@ -33,7 +32,7 @@ Very roughly speaking, if X causes Y, then if X changes, Y changes accordingly, 
 
 This project contains the implementation of the Dimensional Causality method proposed in **Benko, Zlatniczki, Fabo, Solyom, Eross, Telcs & Somogyvari (2018) - Exact Inference of Causal Relation in Dynamical Systems** (you can find it at https://arxiv.org/abs/1808.10806).
 
-The method is available in C++, Python, R and MatLab. It is quite fast due to being implemented in pure C++ with a lot of optimization and parallelization. The Python, R and MatLab versions are equally fast, since they rely on the same C++ code.
+The method is available in C++, Python and R. It is quite fast due to being implemented in pure C++ with a lot of optimization and parallelization. The Python and R versions are equally fast, since they rely on the same C++ code.
 
 
 ## 3 - Installation
@@ -122,8 +121,6 @@ k_range <- seq(10, 40, 2)
 ret <- infer_causality(x, y, 4, 1, k_range)
 print(ret$probs)
 ```
-
-### 4.4 - MatLab
 
 
 ## 5 - TODO
