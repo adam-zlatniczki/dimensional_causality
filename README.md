@@ -76,7 +76,7 @@ The installation process was tested with GNU g++ 7.2.0, PIP 18.0, Rtools 3.4.0.1
 #### 3.3.1 - Prerequisites
 - Windows:
   - Install [rtools](https://cran.r-project.org/bin/windows/Rtools/)
-  - Make sure that Rtools\bin and Rtools\mingw_32\bin are added to your system path (you should set this during the Rtools install with a checkbox)
+  - Make sure that Rtools\bin and Rtools\mingw_XX\bin (XX being 32 or 64, depending on your OS) are added to your system path (you should set this during the Rtools install with a checkbox)
 - Unix:
   - Run
     ```
