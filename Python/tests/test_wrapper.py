@@ -28,12 +28,12 @@ class TestWrapper(unittest.TestCase):
         self.assertEqual(True, True)
 
     def smoke_test_infer_causality_from_manifolds(self):
-        np.random.seed(0)
+        np.random.seed(1)
         x = np.random.rand(1000)
         y = np.random.rand(1000)
 
         X = embed(x, 3, 1)
-        Y = embed(x, 3, 1)
+        Y = embed(y, 3, 1)
         J = X + Y
         Z = X + np.random.permutation(Y)
 
