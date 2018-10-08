@@ -10,17 +10,7 @@
 using namespace std;
 
 
-double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_dim, unsigned int tau, unsigned int* k_range, unsigned int len_range, double eps/*=0.05*/, double c/*=3.0*/, double bins/*=20.0*/, unsigned int downsample_rate/*=1*/, double** export_dims_p/*=NULL*/, double** export_stdevs_p/*=NULL*/){
-	// embed manifolds
-	double** manifolds = get_manifolds(x, y, n, emb_dim, tau, downsample_rate);
-	double* X = manifolds[0];
-	double* Y = manifolds[1];
-	double* J = manifolds[2];
-	double* Z = manifolds[3];
-	
-	// update n
-	n -= (emb_dim - 1) * tau;
-	if (downsample_rate > 1) n = n / downsample_rate;
+double* infer_causality_from_manifolds(double* X, double* Y, double* J, double* Z, unsigned int n, unsigned int emb_dim, unsigned int* k_range, unsigned int len_range, double eps/*=0.05*/, double c/*=3.0*/, double bins/*=20.0*/, double** export_dims_p/*=NULL*/, double** export_stdevs_p/*=NULL*/) {
 	
 	// calculate kNN distances for the whole k-range
     double** X_nn_distances = NULL;
@@ -136,6 +126,25 @@ double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_d
 	delete[] J_nn_distances;
 	delete[] Z_nn_distances;
 	
+	return final_probs;
+}
+
+
+double* infer_causality(double* x, double* y, unsigned int n, unsigned int emb_dim, unsigned int tau, unsigned int* k_range, unsigned int len_range, double eps/*=0.05*/, double c/*=3.0*/, double bins/*=20.0*/, unsigned int downsample_rate/*=1*/, double** export_dims_p/*=NULL*/, double** export_stdevs_p/*=NULL*/){
+	// embed manifolds
+	double** manifolds = get_manifolds(x, y, n, emb_dim, tau, downsample_rate);
+	double* X = manifolds[0];
+	double* Y = manifolds[1];
+	double* J = manifolds[2];
+	double* Z = manifolds[3];
+	
+	n -= (emb_dim - 1) * tau;
+	if (downsample_rate > 1) n = n / downsample_rate;
+	
+	// calculate probabilities from manifolds
+	double* final_probs = infer_causality_from_manifolds(X, Y, J, Z, n, emb_dim, k_range, len_range, eps, c, bins, export_dims_p, export_stdevs_p);
+	
+	// free memory
 	delete[] X;
 	delete[] Y;
 	delete[] J;

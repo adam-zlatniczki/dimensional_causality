@@ -1,2 +1,2 @@
-from dimensional_causality.wrapper import infer_causality
+from dimensional_causality.wrapper import infer_causality, infer_causality_from_manifolds
 from dimensional_causality.plots import add_to_axis_k_range_dimensions, plot_k_range_dimensions, add_to_axis_probabilities, plot_probabilities

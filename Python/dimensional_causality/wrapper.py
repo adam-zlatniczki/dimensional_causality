@@ -22,8 +22,8 @@ libc.infer_causality.argtypes = [POINTER(c_double), POINTER(c_double), c_uint, c
 libc.infer_causality.restype = POINTER(c_double)
 
 libc.infer_causality_from_manifolds.argtypes = [POINTER(c_double), POINTER(c_double), POINTER(c_double),
-                                                POINTER(c_double), c_uint, c_uint, c_uint, POINTER(c_uint), c_uint,
-                                                c_double, c_double, c_double, c_uint, POINTER(POINTER(c_double)),
+                                                POINTER(c_double), c_uint, c_uint, POINTER(c_uint), c_uint,
+                                                c_double, c_double, c_double, POINTER(POINTER(c_double)),
                                                 POINTER(POINTER(c_double))]
 libc.infer_causality_from_manifolds.restype = POINTER(c_double)
 """ Load library End """
@@ -34,6 +34,8 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     """
     Returns a tuple. The first element is a list with the probability of the possible causal cases in the following order:
         P(X -> Y), P(X <-> Y), P(X <- Y), P(X <- Z -> Y), P(X | Y)
+    If the probabilities are NaN-s, then the manifolds violate some theoretical constraints, which is probably due to
+    unfiltered noise, too low embedding dimension or too low sample size.
     The second element is a 2D list containing the dimensions estimates of each manifold for each k in the k_range.
     The third element is a 2D list containing the standard deviations of the dimensions estimates of each manifold for
     each k in the k_range.
@@ -130,11 +132,12 @@ def infer_causality(x, y, emb_dim, tau, k_range, eps=0.05, c=3.0, bins=20.0, dow
     return final_probabilities, export_dims, export_stdevs
 
 
-def infer_causality_from_manifolds(X, Y, J, Z, k_range, eps=0.05, c=3.0, bins=20.0, downsample_rate=1,
-                                   export_data=False, plot=True, use_latex=False):
+def infer_causality_from_manifolds(X, Y, J, Z, k_range, eps=0.05, c=3.0, bins=20.0, export_data=False, plot=True, use_latex=False):
     """
     Returns a tuple. The first element is a list with the probability of the possible causal cases in the following order:
         P(X -> Y), P(X <-> Y), P(X <- Y), P(X <- Z -> Y), P(X | Y)
+    If the probabilities are NaN-s, then the manifolds violate some theoretical constraints, which is probably due to
+    unfiltered noise, too low embedding dimension or too low sample size.
     The second element is a 2D list containing the dimensions estimates of each manifold for each k in the k_range.
     The third element is a 2D list containing the standard deviations of the dimensions estimates of each manifold for
     each k in the k_range.
@@ -157,8 +160,6 @@ def infer_causality_from_manifolds(X, Y, J, Z, k_range, eps=0.05, c=3.0, bins=20
     :type c: float
     :param bins: Number of bins that the distribution will be split into
     :type bins: float
-    :param downsample_rate: Specifies that every 'downsample_rate'-th point in the embedded manifold must only be kept
-    :type downsample_rate: int
     :param plot: indicates whether plots should be drawn
     :type plot: bool
     :param use_latex: whether pretty labels should be used in plots or not (requires LaTeX installed and available in system path)
@@ -168,16 +169,23 @@ def infer_causality_from_manifolds(X, Y, J, Z, k_range, eps=0.05, c=3.0, bins=20
     """
     export_data = export_data or plot
 
-    x_arr = (c_double * len(x))()
-    y_arr = (c_double * len(x))()
+    # Convert manifolds to 1D arrays
+    num_elems = X.shape[0] * X.shape[1]
+    x_arr = (c_double * num_elems)()
+    y_arr = (c_double * num_elems)()
+    j_arr = (c_double * num_elems)()
+    z_arr = (c_double * num_elems)()
 
-    for i in range(len(x)):
-        x_arr[i] = c_double(x[i])
-        y_arr[i] = c_double(y[i])
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            x_arr[i * X.shape[1] + j] = c_double(X[i, j])
+            y_arr[i * Y.shape[1] + j] = c_double(Y[i, j])
+            j_arr[i * J.shape[1] + j] = c_double(J[i, j])
+            z_arr[i * Z.shape[1] + j] = c_double(Z[i, j])
 
-    n = c_uint(len(x))
-    emb_dim = c_uint(X.shape)
-    tau = c_uint(tau)
+    # convert parameters to ctypes
+    n = c_uint(X.shape[0])
+    emb_dim = c_uint(X.shape[1])
 
     k_range_arr = (c_uint * len(k_range))()
 
@@ -188,7 +196,6 @@ def infer_causality_from_manifolds(X, Y, J, Z, k_range, eps=0.05, c=3.0, bins=20
     eps = c_double(eps)
     c = c_double(c)
     bins = c_double(bins)
-    downsample_rate = c_uint(downsample_rate)
 
     export_dims = POINTER(c_double)()  # create null pointer
     export_stdevs = POINTER(c_double)()
@@ -196,18 +203,18 @@ def infer_causality_from_manifolds(X, Y, J, Z, k_range, eps=0.05, c=3.0, bins=20
         export_dims = pointer(export_dims)  # convert to pointer of pointer
         export_stdevs = pointer(export_stdevs)
 
-    probs = libc.infer_causality(
+    probs = libc.infer_causality_from_manifolds(
         cast(x_arr, POINTER(c_double)),
         cast(y_arr, POINTER(c_double)),
+        cast(j_arr, POINTER(c_double)),
+        cast(z_arr, POINTER(c_double)),
         n,
         emb_dim,
-        tau,
         cast(k_range_arr, POINTER(c_uint)),
         len_range,
         eps,
         c,
         bins,
-        downsample_rate,
         export_dims,
         export_stdevs
     )
