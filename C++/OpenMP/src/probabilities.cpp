@@ -2,6 +2,8 @@
 #include <cmath>
 #include "statistics.h"
 
+#include <stdexcept>
+
 using namespace std;
 
 # define PI 3.14159265358979323846
@@ -489,7 +491,7 @@ double P_X_less_Y_less_J_less_Z(double* expv, double* cov_m,
 			
 			for (l; l<=j_steps; l++) {
 				j = j_lb + l*dj;
-				z_lb = min( max(y, min_j), max_j);
+				z_lb = min( max(j, min_z), max_z);
 				z_steps = (max_z - z_lb) / dz;
 				
 				int m = 0;
@@ -1805,7 +1807,7 @@ void fit_gauss(double** dims, unsigned int n, double eff_sample_size, double** e
 	for (int i=0; i<16; i++) cov_m[i] *= eff_sample_size / n;
 }
 
-double* get_probabilities(double* expv, double* cov_m, double c=3.0, double bins=20.0){
+double* get_probabilities(double* expv, double* cov_m, double c, double bins){
 	
 	double min_x = max( expv[0] - c * sqrt(cov_m[0]) , 0.0);
 	double max_x = expv[0] + c * sqrt(cov_m[0]);

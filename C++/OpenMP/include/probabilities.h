@@ -86,6 +86,6 @@ double prob_A32(double* expv, double* cov_m, double min_x, double max_x, double 
 double prob_A33(double* expv, double* cov_m, double min_x, double max_x, double min_y, double max_y, double min_j, double max_j, double min_z, double max_z, double dx, double dy, double dj, double dz);
 
 void fit_gauss(double** dims, unsigned int n, double eff_sample_size, double** expv_p, double** cov_m_P);
-double* get_probabilities(double* expv, double* cov_m, double c=3.0, double bins=20.0);
+double* get_probabilities(double* expv, double* cov_m, double c, double bins);
 
 #endif
