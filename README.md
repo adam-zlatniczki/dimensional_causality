@@ -12,7 +12,7 @@
 4. Examples
 5. TODO
 
-You should check out our GitHub Wiki as well, we are constantly moving and enahncing/expanding content there.
+You should check out our GitHub Wiki as well, we are constantly moving and enhancing/expanding content there.
 
 
 ## 1 - Terms and conditions of use
