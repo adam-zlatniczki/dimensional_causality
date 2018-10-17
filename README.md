@@ -12,7 +12,7 @@
 4. Examples
 5. TODO
 
-You should check out our GitHub Wiki as well, we are constantly moving and enhancing/expanding content there.
+You should check out our [GitHub Wiki](https://github.com/adam-zlatniczki/dimensional_causality/wiki) as well, we are constantly moving and enhancing/expanding content there.
 
 
 ## 1 - Terms and conditions of use
@@ -32,7 +32,7 @@ Very roughly speaking, if X causes Y, then if X changes, Y changes accordingly, 
 
 **Your data probably has to undergo some preprocessing before Dimensional Causality can be effectively applied to it. There are also a few parameters that you have to specify. For a guide on these you should read the paper cited below, especially the Workflow chapter in the Supplementary Material.**
 
-This project contains the implementation of the Dimensional Causality method proposed in **Benko, Zlatniczki, Fabo, Solyom, Eross, Telcs & Somogyvari (2018) - Exact Inference of Causal Relation in Dynamical Systems** (you can find it at https://www.researchgate.net/project/Causality-6).
+This project contains the implementation of the Dimensional Causality method proposed in **Benko, Zlatniczki, Fabo, Solyom, Eross, Telcs & Somogyvari (2018) - Exact Inference of Causal Relation in Dynamical Systems** (you can find it at [ResearchGate](https://www.researchgate.net/project/Causality-6)).
 
 The method is available in C++, Python and R. It is quite fast due to being implemented in pure C++ with a lot of optimization and parallelization. The Python and R versions are equally fast, since they rely on the same C++ code.
 
