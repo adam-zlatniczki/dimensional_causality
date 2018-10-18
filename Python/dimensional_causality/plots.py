@@ -1,5 +1,5 @@
 from matplotlib import pyplot as plt
-from constants import *
+from .constants import *
 import numpy as np
 from matplotlib import interactive
 
@@ -12,7 +12,7 @@ def _set_axis_xticks(ax, xvals):
     :return:
     '''
     length_xvals = len(xvals)
-    nth = length_xvals / NUM_TICKS
+    nth = length_xvals // NUM_TICKS
 
     # Check if the desired number of ticks is whether zero or not
     if nth == 0:

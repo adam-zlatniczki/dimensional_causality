@@ -1,6 +1,6 @@
 import os
 from ctypes import cdll, c_double, c_uint, cast, POINTER, pointer
-from plots import plot_k_range_dimensions, plot_probabilities
+from .plots import plot_k_range_dimensions, plot_probabilities
 
 """ Load OS specific shared library """
 openmp_dll_path = os.path.join(os.path.dirname(__file__), "dimensional_causality_openmp.dll")
