@@ -1548,7 +1548,7 @@ double prob_A13(double* expv, double* cov_m, double min_x, double max_x, double 
 			}
 		}
 	}
-
+	
     return likelihood;
 }
 
